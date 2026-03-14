@@ -1,0 +1,32 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+dreams
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Database
+*.db
+*.db-journal
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# App data
+var/
