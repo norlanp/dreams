@@ -30,3 +30,4 @@ Thumbs.db
 
 # App data
 var/
+tmp/
