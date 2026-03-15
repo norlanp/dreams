@@ -16,6 +16,7 @@ type repo interface {
 	GetDream(ctx context.Context, id int64) (*model.Dream, error)
 	UpdateDream(ctx context.Context, id int64, content string) (*model.Dream, error)
 	DeleteDream(ctx context.Context, id int64) error
+	SearchDreams(ctx context.Context, query string) ([]model.Dream, error)
 }
 
 type viewState int
@@ -25,25 +26,30 @@ const (
 	detailView
 	createView
 	updateView
+	searchView
 )
 
 type Model struct {
-	repo              repo
-	state             viewState
-	width             int
-	height            int
-	dreams            []model.Dream
-	selected          int
-	contentInput      textarea.Model
-	error             error
-	editingDream      *model.Dream
-	contentInsertMode bool
-	commandMode       bool
-	commandInput      string
-	statusMessage     string
-	pendingDeleteOp   bool
-	confirmDelete     bool
-	confirmDeleteYes  bool
+	repo               repo
+	state              viewState
+	width              int
+	height             int
+	dreams             []model.Dream
+	selected           int
+	contentInput       textarea.Model
+	error              error
+	editingDream       *model.Dream
+	contentInsertMode  bool
+	commandMode        bool
+	commandInput       string
+	statusMessage      string
+	pendingDeleteOp    bool
+	confirmDelete      bool
+	confirmDeleteYes   bool
+	searchQuery        string
+	isSearching        bool
+	hasSearched        bool
+	dreamsBeforeSearch []model.Dream
 }
 
 var (

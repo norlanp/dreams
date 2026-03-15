@@ -20,6 +20,8 @@ func (m Model) View() string {
 		return m.createView()
 	case detailView:
 		return m.detailView()
+	case searchView:
+		return m.searchView()
 	default:
 		return "Unknown state"
 	}
@@ -50,7 +52,7 @@ func (m Model) listView() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(renderHelp("n: new dream • enter: view • ↑↓: navigate • q: quit", m.width))
+	b.WriteString(renderHelp("n: new dream • /: search • enter: view • ↑↓: navigate • q: quit", m.width))
 
 	content := b.String()
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
@@ -124,6 +126,45 @@ func (m Model) detailView() string {
 	b.WriteString(renderHelp("e: edit • d: delete • esc: back • q: quit", m.width))
 
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
+}
+
+func (m Model) searchView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("Search Dreams"))
+	b.WriteString("\n\n")
+
+	b.WriteString(subtitleStyle.Render("Search: "))
+	b.WriteString(m.searchQuery)
+	if m.isSearching {
+		b.WriteString(" ")
+		b.WriteString(statusStyle.Render("(searching...)"))
+	}
+	b.WriteString("\n\n")
+
+	if len(m.dreams) == 0 {
+		if m.searchQuery != "" && !m.isSearching {
+			b.WriteString(itemStyle.MarginLeft(2).Render("No dreams found."))
+		}
+	} else {
+		for i, dream := range m.dreams {
+			style := itemStyle
+			if i == m.selected {
+				style = selectedStyle
+			}
+			dateStr := dream.CreatedAt.Local().Format("Mon 02, 2006")
+			preview := previewText(dream.Content, 30)
+			line := fmt.Sprintf("  %s - %s", dateStr, preview)
+			b.WriteString(style.Render(line))
+			b.WriteString("\n")
+		}
+	}
+
+	b.WriteString("\n")
+	b.WriteString(renderHelp("enter: search • esc: cancel • backspace: clear • type to filter • ↑↓: navigate", m.width))
+
+	content := b.String()
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
 }
 
 func (m Model) errorView() string {

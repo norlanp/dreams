@@ -21,3 +21,9 @@ RETURNING id, content, created_at, updated_at;
 
 -- name: DeleteDream :exec
 DELETE FROM dreams WHERE id = ?;
+
+-- name: SearchDreams :many
+SELECT id, content, created_at, updated_at
+FROM dreams
+WHERE content LIKE '%' || ? || '%'
+ORDER BY created_at ASC;

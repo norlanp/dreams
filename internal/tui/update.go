@@ -134,6 +134,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleCreateKeys(msg)
 		case detailView:
 			return m.handleDetailKeys(msg)
+		case searchView:
+			return m.handleSearchKeys(msg)
 		}
 
 	case tea.WindowSizeMsg:
@@ -196,6 +198,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, loadDreams(m.repo)
 		}
 		return m, nil
+
+	case dreamsSearchedMsg:
+		if msg.err != nil {
+			m.error = msg.err
+		} else {
+			m.dreams = msg.dreams
+			m.selected = 0
+			m.isSearching = false
+			m.hasSearched = true
+		}
+		return m, nil
 	}
 
 	return m, nil
@@ -209,6 +222,13 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m = m.resetCreateForm()
 		m.state = createView
 		return m, m.contentInput.Focus()
+	case "/":
+		m.state = searchView
+		m.searchQuery = ""
+		m.isSearching = false
+		m.hasSearched = false
+		m.dreamsBeforeSearch = m.dreams
+		return m, nil
 	case "up", "k":
 		if m.selected > 0 {
 			m.selected--
@@ -522,6 +542,80 @@ func (m Model) handleDetailKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.confirmDelete = true
 			m.confirmDeleteYes = false
 		}
+		return m, nil
+	}
+
+	return m, nil
+}
+
+type dreamsSearchedMsg struct {
+	dreams []model.Dream
+	err    error
+}
+
+func searchDreams(r repo, query string) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		dreams, err := r.SearchDreams(ctx, query)
+		return dreamsSearchedMsg{dreams: dreams, err: err}
+	}
+}
+
+func (m Model) handleSearchKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	key := msg.String()
+
+	switch key {
+	case "esc":
+		m.state = listView
+		m.searchQuery = ""
+		m.isSearching = false
+		m.hasSearched = false
+		m.dreams = m.dreamsBeforeSearch
+		m.dreamsBeforeSearch = nil
+		m.selected = 0
+		return m, nil
+	case "enter":
+		if m.isSearching {
+			return m, nil
+		}
+		if m.searchQuery != "" && !m.hasSearched {
+			m.isSearching = true
+			return m, searchDreams(m.repo, m.searchQuery)
+		}
+		if len(m.dreams) > 0 {
+			m.confirmDelete = false
+			m.confirmDeleteYes = false
+			m.state = detailView
+		}
+		return m, nil
+	case "up", "k":
+		if m.selected > 0 {
+			m.selected--
+		}
+		return m, nil
+	case "down", "j":
+		if m.selected < len(m.dreams)-1 {
+			m.selected++
+		}
+		return m, nil
+	}
+
+	switch msg.Type {
+	case tea.KeyBackspace:
+		runes := []rune(m.searchQuery)
+		if len(runes) > 0 {
+			m.searchQuery = string(runes[:len(runes)-1])
+			if m.searchQuery == "" {
+				m.dreams = m.dreamsBeforeSearch
+				m.hasSearched = false
+				m.selected = 0
+			}
+		}
+		return m, nil
+	case tea.KeyRunes:
+		m.searchQuery += string(msg.Runes)
 		return m, nil
 	}
 

@@ -135,6 +135,20 @@ func (r *Repository) DeleteDream(ctx context.Context, id int64) error {
 	return nil
 }
 
+func (r *Repository) SearchDreams(ctx context.Context, query string) ([]model.Dream, error) {
+	rows, err := r.queries.SearchDreams(ctx, sql.NullString{String: query, Valid: true})
+	if err != nil {
+		return nil, fmt.Errorf("failed to search dreams: %w", err)
+	}
+
+	dreams := make([]model.Dream, len(rows))
+	for i, d := range rows {
+		dreams[i] = *toModel(d)
+	}
+
+	return dreams, nil
+}
+
 func toModel(d sqlc.Dream) *model.Dream {
 	return &model.Dream{
 		ID:        d.ID,

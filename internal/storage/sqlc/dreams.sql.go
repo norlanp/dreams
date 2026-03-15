@@ -95,6 +95,41 @@ func (q *Queries) ListDreams(ctx context.Context) ([]Dream, error) {
 	return items, nil
 }
 
+const searchDreams = `-- name: SearchDreams :many
+SELECT id, content, created_at, updated_at
+FROM dreams
+WHERE content LIKE '%' || ? || '%'
+ORDER BY created_at ASC
+`
+
+func (q *Queries) SearchDreams(ctx context.Context, dollar_1 sql.NullString) ([]Dream, error) {
+	rows, err := q.db.QueryContext(ctx, searchDreams, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Dream{}
+	for rows.Next() {
+		var i Dream
+		if err := rows.Scan(
+			&i.ID,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateDream = `-- name: UpdateDream :one
 UPDATE dreams
 SET content = ?, updated_at = ?
