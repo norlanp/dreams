@@ -17,6 +17,10 @@ type repo interface {
 	UpdateDream(ctx context.Context, id int64, content string) (*model.Dream, error)
 	DeleteDream(ctx context.Context, id int64) error
 	SearchDreams(ctx context.Context, query string) ([]model.Dream, error)
+	GetLatestAnalysis(ctx context.Context) (*model.Analysis, error)
+	GetAnalysisClusters(ctx context.Context, analysisID int64) ([]model.Cluster, error)
+	SaveAnalysis(ctx context.Context, analysisDate time.Time, dreamCount, nClusters int64, resultsJSON string) (*model.Analysis, error)
+	SaveCluster(ctx context.Context, analysisID, clusterID, dreamCount int64, topTerms, dreamIDs string) (*model.Cluster, error)
 }
 
 type viewState int

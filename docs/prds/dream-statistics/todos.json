@@ -1,0 +1,37 @@
+[
+  {
+    "content": "Set up Python infrastructure with uv for scikit-learn clustering",
+    "status": "completed",
+    "priority": "high"
+  },
+  {
+    "content": "Create Python batch processing script for dreamsign extraction",
+    "status": "completed",
+    "priority": "high"
+  },
+  {
+    "content": "Create SQLite tables for storing analysis results",
+    "status": "completed",
+    "priority": "high"
+  },
+  {
+    "content": "Add Go repository methods for analysis storage/retrieval",
+    "status": "completed",
+    "priority": "high"
+  },
+  {
+    "content": "Integrate Python analysis trigger from Go CLI",
+    "status": "pending",
+    "priority": "high"
+  },
+  {
+    "content": "Display clustering results in TUI",
+    "status": "pending",
+    "priority": "medium"
+  },
+  {
+    "content": "Add tests for Python analysis pipeline",
+    "status": "pending",
+    "priority": "medium"
+  }
+]

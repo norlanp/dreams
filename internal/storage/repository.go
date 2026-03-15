@@ -157,3 +157,100 @@ func toModel(d sqlc.Dream) *model.Dream {
 		UpdatedAt: d.UpdatedAt.Time,
 	}
 }
+
+func (r *Repository) SaveAnalysis(ctx context.Context, analysisDate time.Time, dreamCount, nClusters int64, resultsJSON string) (*model.Analysis, error) {
+	params := sqlc.CreateAnalysisParams{
+		AnalysisDate: analysisDate.Format(time.RFC3339),
+		DreamCount:   dreamCount,
+		NClusters:    nClusters,
+		ResultsJson:  resultsJSON,
+		CreatedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
+	}
+
+	a, err := r.queries.CreateAnalysis(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create analysis: %w", err)
+	}
+
+	return toAnalysisModel(a), nil
+}
+
+func (r *Repository) SaveCluster(ctx context.Context, analysisID, clusterID, dreamCount int64, topTerms, dreamIDs string) (*model.Cluster, error) {
+	params := sqlc.CreateClusterParams{
+		AnalysisID: analysisID,
+		ClusterID:  clusterID,
+		DreamCount: dreamCount,
+		TopTerms:   topTerms,
+		DreamIds:   dreamIDs,
+		CreatedAt:  sql.NullTime{Time: time.Now().UTC(), Valid: true},
+	}
+
+	c, err := r.queries.CreateCluster(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cluster: %w", err)
+	}
+
+	return toClusterModel(c), nil
+}
+
+func (r *Repository) GetLatestAnalysis(ctx context.Context) (*model.Analysis, error) {
+	a, err := r.queries.GetLatestAnalysis(ctx)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest analysis: %w", err)
+	}
+
+	return toAnalysisModel(a), nil
+}
+
+func (r *Repository) GetAnalysisClusters(ctx context.Context, analysisID int64) ([]model.Cluster, error) {
+	rows, err := r.queries.GetAnalysisClusters(ctx, analysisID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get analysis clusters: %w", err)
+	}
+
+	clusters := make([]model.Cluster, len(rows))
+	for i, c := range rows {
+		clusters[i] = *toClusterModel(c)
+	}
+
+	return clusters, nil
+}
+
+func (r *Repository) ListAnalysisHistory(ctx context.Context) ([]model.Analysis, error) {
+	rows, err := r.queries.ListAnalysisHistory(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list analysis history: %w", err)
+	}
+
+	analyses := make([]model.Analysis, len(rows))
+	for i, a := range rows {
+		analyses[i] = *toAnalysisModel(a)
+	}
+
+	return analyses, nil
+}
+
+func toAnalysisModel(a sqlc.DreamAnalysis) *model.Analysis {
+	analysisDate, _ := time.Parse(time.RFC3339, a.AnalysisDate)
+	return &model.Analysis{
+		ID:           a.ID,
+		AnalysisDate: analysisDate,
+		DreamCount:   a.DreamCount,
+		NClusters:    a.NClusters,
+		ResultsJSON:  a.ResultsJson,
+		CreatedAt:    a.CreatedAt.Time,
+	}
+}
+
+func toClusterModel(c sqlc.DreamCluster) *model.Cluster {
+	return &model.Cluster{
+		ID:         c.ID,
+		AnalysisID: c.AnalysisID,
+		ClusterID:  c.ClusterID,
+		DreamCount: c.DreamCount,
+		CreatedAt:  c.CreatedAt.Time,
+	}
+}

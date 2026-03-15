@@ -14,3 +14,22 @@ type Dream struct {
 	CreatedAt sql.NullTime `json:"created_at"`
 	UpdatedAt sql.NullTime `json:"updated_at"`
 }
+
+type DreamAnalysis struct {
+	ID           int64        `json:"id"`
+	AnalysisDate string       `json:"analysis_date"`
+	DreamCount   int64        `json:"dream_count"`
+	NClusters    int64        `json:"n_clusters"`
+	ResultsJson  string       `json:"results_json"`
+	CreatedAt    sql.NullTime `json:"created_at"`
+}
+
+type DreamCluster struct {
+	ID         int64        `json:"id"`
+	AnalysisID int64        `json:"analysis_id"`
+	ClusterID  int64        `json:"cluster_id"`
+	DreamCount int64        `json:"dream_count"`
+	TopTerms   string       `json:"top_terms"`
+	DreamIds   string       `json:"dream_ids"`
+	CreatedAt  sql.NullTime `json:"created_at"`
+}
