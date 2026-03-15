@@ -10,7 +10,6 @@ import (
 
 type Dream struct {
 	ID        int64        `json:"id"`
-	Title     string       `json:"title"`
 	Content   string       `json:"content"`
 	CreatedAt sql.NullTime `json:"created_at"`
 	UpdatedAt sql.NullTime `json:"updated_at"`

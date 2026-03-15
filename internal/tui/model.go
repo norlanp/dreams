@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -12,10 +11,10 @@ import (
 )
 
 type repo interface {
-	CreateDream(ctx context.Context, title, content string) (*model.Dream, error)
+	CreateDream(ctx context.Context, content string) (*model.Dream, error)
 	ListDreams(ctx context.Context) ([]model.Dream, error)
 	GetDream(ctx context.Context, id int64) (*model.Dream, error)
-	UpdateDream(ctx context.Context, id int64, title, content string) (*model.Dream, error)
+	UpdateDream(ctx context.Context, id int64, content string) (*model.Dream, error)
 	DeleteDream(ctx context.Context, id int64) error
 }
 
@@ -35,11 +34,9 @@ type Model struct {
 	height            int
 	dreams            []model.Dream
 	selected          int
-	titleInput        textinput.Model
 	contentInput      textarea.Model
 	error             error
 	editingDream      *model.Dream
-	focusContent      bool
 	contentInsertMode bool
 	commandMode       bool
 	commandInput      string
@@ -111,11 +108,6 @@ var (
 )
 
 func NewModel(r repo) Model {
-	ti := textinput.New()
-	ti.Placeholder = "Enter title..."
-	ti.Focus()
-	ti.Width = 50
-
 	ta := textarea.New()
 	ta.Placeholder = "Enter content..."
 	ta.SetWidth(50)
@@ -127,7 +119,6 @@ func NewModel(r repo) Model {
 		repo:              r,
 		state:             listView,
 		dreams:            []model.Dream{},
-		titleInput:        ti,
 		contentInput:      ta,
 		contentInsertMode: true,
 	}

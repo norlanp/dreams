@@ -11,29 +11,22 @@ import (
 )
 
 const createDream = `-- name: CreateDream :one
-INSERT INTO dreams (title, content, created_at, updated_at)
-VALUES (?, ?, ?, ?)
-RETURNING id, title, content, created_at, updated_at
+INSERT INTO dreams (content, created_at, updated_at)
+VALUES (?, ?, ?)
+RETURNING id, content, created_at, updated_at
 `
 
 type CreateDreamParams struct {
-	Title     string       `json:"title"`
 	Content   string       `json:"content"`
 	CreatedAt sql.NullTime `json:"created_at"`
 	UpdatedAt sql.NullTime `json:"updated_at"`
 }
 
 func (q *Queries) CreateDream(ctx context.Context, arg CreateDreamParams) (Dream, error) {
-	row := q.db.QueryRowContext(ctx, createDream,
-		arg.Title,
-		arg.Content,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
+	row := q.db.QueryRowContext(ctx, createDream, arg.Content, arg.CreatedAt, arg.UpdatedAt)
 	var i Dream
 	err := row.Scan(
 		&i.ID,
-		&i.Title,
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -51,7 +44,7 @@ func (q *Queries) DeleteDream(ctx context.Context, id int64) error {
 }
 
 const getDream = `-- name: GetDream :one
-SELECT id, title, content, created_at, updated_at
+SELECT id, content, created_at, updated_at
 FROM dreams
 WHERE id = ?
 `
@@ -61,7 +54,6 @@ func (q *Queries) GetDream(ctx context.Context, id int64) (Dream, error) {
 	var i Dream
 	err := row.Scan(
 		&i.ID,
-		&i.Title,
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -70,9 +62,9 @@ func (q *Queries) GetDream(ctx context.Context, id int64) (Dream, error) {
 }
 
 const listDreams = `-- name: ListDreams :many
-SELECT id, title, content, created_at, updated_at
+SELECT id, content, created_at, updated_at
 FROM dreams
-ORDER BY created_at DESC
+ORDER BY created_at ASC
 `
 
 func (q *Queries) ListDreams(ctx context.Context) ([]Dream, error) {
@@ -86,7 +78,6 @@ func (q *Queries) ListDreams(ctx context.Context) ([]Dream, error) {
 		var i Dream
 		if err := rows.Scan(
 			&i.ID,
-			&i.Title,
 			&i.Content,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -106,29 +97,22 @@ func (q *Queries) ListDreams(ctx context.Context) ([]Dream, error) {
 
 const updateDream = `-- name: UpdateDream :one
 UPDATE dreams
-SET title = ?, content = ?, updated_at = ?
+SET content = ?, updated_at = ?
 WHERE id = ?
-RETURNING id, title, content, created_at, updated_at
+RETURNING id, content, created_at, updated_at
 `
 
 type UpdateDreamParams struct {
-	Title     string       `json:"title"`
 	Content   string       `json:"content"`
 	UpdatedAt sql.NullTime `json:"updated_at"`
 	ID        int64        `json:"id"`
 }
 
 func (q *Queries) UpdateDream(ctx context.Context, arg UpdateDreamParams) (Dream, error) {
-	row := q.db.QueryRowContext(ctx, updateDream,
-		arg.Title,
-		arg.Content,
-		arg.UpdatedAt,
-		arg.ID,
-	)
+	row := q.db.QueryRowContext(ctx, updateDream, arg.Content, arg.UpdatedAt, arg.ID)
 	var i Dream
 	err := row.Scan(
 		&i.ID,
-		&i.Title,
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,

@@ -41,7 +41,9 @@ func (m Model) listView() string {
 			if i == m.selected {
 				style = selectedStyle
 			}
-			line := fmt.Sprintf("  %d. %s", i+1, dream.Title)
+			dateStr := dream.CreatedAt.Local().Format("Mon 02, 2006")
+			preview := previewText(dream.Content, 30)
+			line := fmt.Sprintf("  %s - %s", dateStr, preview)
 			b.WriteString(style.Render(line))
 			b.WriteString("\n")
 		}
@@ -60,26 +62,11 @@ func (m Model) createView() string {
 	b.WriteString(titleStyle.Render("New Dream"))
 	b.WriteString("\n\n")
 
-	titleLabelStyle := inputLabelStyle
-	if !m.focusContent {
-		titleLabelStyle = inputLabelFocusedStyle
-	}
-	b.WriteString("  ")
-	b.WriteString(titleLabelStyle.Render("Title"))
-	b.WriteString("\n")
-	b.WriteString(m.titleInput.View())
-	b.WriteString("\n\n")
-
-	contentLabelStyle := inputLabelStyle
-	if m.focusContent {
-		contentLabelStyle = inputLabelFocusedStyle
-	}
 	modeView := modeInsertStyle.Render("INSERT")
 	if !m.contentInsertMode {
 		modeView = modeNormalStyle.Render("NORMAL")
 	}
 	b.WriteString("  ")
-	b.WriteString(contentLabelStyle.Render("Content "))
 	b.WriteString(modeView)
 	b.WriteString("\n")
 	b.WriteString(m.contentInput.View())
@@ -93,7 +80,7 @@ func (m Model) createView() string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString(renderHelp("tab: switch • esc: normal • o/O open line • dd delete line • :e edit in $EDITOR • :w save • :wq save+exit • :q quit", m.width))
+	b.WriteString(renderHelp("esc: normal • o/O open line • dd delete line • :e edit in $EDITOR • :w save • :wq save+exit • :q quit", m.width))
 
 	content := b.String()
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
@@ -108,8 +95,6 @@ func (m Model) detailView() string {
 
 	dream := m.dreams[m.selected]
 
-	b.WriteString(titleStyle.Render(dream.Title))
-	b.WriteString("\n")
 	b.WriteString(subtitleStyle.Render(dream.CreatedAt.Local().Format("2006-01-02 15:04")))
 	b.WriteString("\n\n")
 
@@ -136,7 +121,7 @@ func (m Model) detailView() string {
 		return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
 	}
 
-	b.WriteString(renderHelp("d: delete • esc: back • q: quit", m.width))
+	b.WriteString(renderHelp("e: edit • d: delete • esc: back • q: quit", m.width))
 
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
 }
@@ -193,6 +178,21 @@ func wrapSingleLine(line string, width int) string {
 
 	result.WriteString(currentLine)
 	return result.String()
+}
+
+func previewText(text string, maxLen int) string {
+	lines := strings.Split(text, "\n")
+	if len(lines) == 0 {
+		return "(empty)"
+	}
+	firstLine := strings.TrimSpace(lines[0])
+	if len(firstLine) == 0 {
+		return "(empty)"
+	}
+	if len(firstLine) > maxLen {
+		return firstLine[:maxLen-3] + "..."
+	}
+	return firstLine
 }
 
 var _ tea.Model = Model{}

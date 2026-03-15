@@ -67,10 +67,9 @@ func (r *Repository) Close() error {
 	return r.db.Close()
 }
 
-func (r *Repository) CreateDream(ctx context.Context, title, content string) (*model.Dream, error) {
+func (r *Repository) CreateDream(ctx context.Context, content string) (*model.Dream, error) {
 	now := sql.NullTime{Time: time.Now().UTC(), Valid: true}
 	params := sqlc.CreateDreamParams{
-		Title:     title,
 		Content:   content,
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -110,10 +109,9 @@ func (r *Repository) GetDream(ctx context.Context, id int64) (*model.Dream, erro
 	return toModel(d), nil
 }
 
-func (r *Repository) UpdateDream(ctx context.Context, id int64, title, content string) (*model.Dream, error) {
+func (r *Repository) UpdateDream(ctx context.Context, id int64, content string) (*model.Dream, error) {
 	params := sqlc.UpdateDreamParams{
 		ID:        id,
-		Title:     title,
 		Content:   content,
 		UpdatedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true},
 	}
@@ -140,7 +138,6 @@ func (r *Repository) DeleteDream(ctx context.Context, id int64) error {
 func toModel(d sqlc.Dream) *model.Dream {
 	return &model.Dream{
 		ID:        d.ID,
-		Title:     d.Title,
 		Content:   d.Content,
 		CreatedAt: d.CreatedAt.Time,
 		UpdatedAt: d.UpdatedAt.Time,

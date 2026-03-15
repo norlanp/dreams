@@ -45,7 +45,7 @@ func loadDreams(r repo) tea.Cmd {
 	}
 }
 
-func saveDream(r repo, existing *model.Dream, title, content string, exitAfterSave bool) tea.Cmd {
+func saveDream(r repo, existing *model.Dream, content string, exitAfterSave bool) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -56,9 +56,9 @@ func saveDream(r repo, existing *model.Dream, title, content string, exitAfterSa
 		)
 
 		if existing == nil {
-			dream, err = r.CreateDream(ctx, title, content)
+			dream, err = r.CreateDream(ctx, content)
 		} else {
-			dream, err = r.UpdateDream(ctx, existing.ID, title, content)
+			dream, err = r.UpdateDream(ctx, existing.ID, content)
 		}
 
 		return dreamSavedMsg{dream: dream, err: err, exitAfterSave: exitAfterSave}
@@ -178,17 +178,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusMessage = "Editor closed without changes."
 		}
 
-		if m.focusContent {
-			focusCmd := m.contentInput.Focus()
-			mode := cursor.CursorStatic
-			if m.contentInsertMode {
-				mode = cursor.CursorBlink
-			}
-			modeCmd := m.contentInput.Cursor.SetMode(mode)
-			return m, tea.Batch(focusCmd, modeCmd)
+		focusCmd := m.contentInput.Focus()
+		mode := cursor.CursorStatic
+		if m.contentInsertMode {
+			mode = cursor.CursorBlink
 		}
-
-		return m, nil
+		modeCmd := m.contentInput.Cursor.SetMode(mode)
+		return m, tea.Batch(focusCmd, modeCmd)
 
 	case dreamDeletedMsg:
 		if msg.err != nil {
@@ -212,7 +208,7 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "n":
 		m = m.resetCreateForm()
 		m.state = createView
-		return m, m.titleInput.Focus()
+		return m, m.contentInput.Focus()
 	case "up", "k":
 		if m.selected > 0 {
 			m.selected--
@@ -262,26 +258,8 @@ func (m Model) handleCreateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 
-	if msg.Type == tea.KeyTab {
-		m.focusContent = !m.focusContent
-		m.statusMessage = ""
-		m.pendingDeleteOp = false
-		if m.focusContent {
-			m.titleInput.Blur()
-			focusCmd := m.contentInput.Focus()
-			if m.contentInsertMode {
-				modeCmd := m.contentInput.Cursor.SetMode(cursor.CursorBlink)
-				return m, tea.Batch(focusCmd, modeCmd)
-			}
-			modeCmd := m.contentInput.Cursor.SetMode(cursor.CursorStatic)
-			return m, tea.Batch(focusCmd, modeCmd)
-		}
-		m.contentInput.Blur()
-		return m, m.titleInput.Focus()
-	}
-
 	if msg.Type == tea.KeyEsc {
-		if m.focusContent && m.contentInsertMode {
+		if m.contentInsertMode {
 			m.contentInsertMode = false
 			m.statusMessage = ""
 			m.pendingDeleteOp = false
@@ -293,7 +271,7 @@ func (m Model) handleCreateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if msg.Type == tea.KeyRunes && len(msg.Runes) == 1 && msg.Runes[0] == ':' {
-		if !m.focusContent || !m.contentInsertMode {
+		if !m.contentInsertMode {
 			m.commandMode = true
 			m.commandInput = ""
 			m.statusMessage = ""
@@ -302,18 +280,12 @@ func (m Model) handleCreateKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if m.focusContent && !m.contentInsertMode {
+	if !m.contentInsertMode {
 		return m.handleContentNormalModeKeys(msg)
 	}
 
-	if m.focusContent {
-		var cmd tea.Cmd
-		m.contentInput, cmd = m.contentInput.Update(msg)
-		return m, cmd
-	}
-
 	var cmd tea.Cmd
-	m.titleInput, cmd = m.titleInput.Update(msg)
+	m.contentInput, cmd = m.contentInput.Update(msg)
 	return m, cmd
 }
 
@@ -326,22 +298,13 @@ func (m Model) executeCreateCommand() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	title := strings.TrimSpace(m.titleInput.Value())
 	content := m.contentInput.Value()
 
 	switch cmd {
 	case "w":
-		if title == "" {
-			m.statusMessage = "Title is required to save."
-			return m, nil
-		}
-		return m, saveDream(m.repo, m.editingDream, title, content, false)
+		return m, saveDream(m.repo, m.editingDream, content, false)
 	case "wq":
-		if title == "" {
-			m.statusMessage = "Title is required to save."
-			return m, nil
-		}
-		return m, saveDream(m.repo, m.editingDream, title, content, true)
+		return m, saveDream(m.repo, m.editingDream, content, true)
 	case "q":
 		m = m.resetCreateForm()
 		m.state = listView
@@ -544,6 +507,16 @@ func (m Model) handleDetailKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "ctrl+c":
 		return m, tea.Quit
+	case "e":
+		if len(m.dreams) > 0 && m.selected < len(m.dreams) {
+			dream := m.dreams[m.selected]
+			m = m.resetCreateForm()
+			m.editingDream = &dream
+			m.contentInput.SetValue(dream.Content)
+			m.state = createView
+			return m, m.contentInput.Focus()
+		}
+		return m, nil
 	case "d":
 		if len(m.dreams) > 0 && m.selected < len(m.dreams) {
 			m.confirmDelete = true
@@ -566,16 +539,13 @@ func deleteDream(r repo, id int64) tea.Cmd {
 }
 
 func (m Model) resetCreateForm() Model {
-	m.titleInput.Reset()
 	m.contentInput.SetValue("")
-	m.focusContent = false
 	m.contentInsertMode = true
 	m.commandMode = false
 	m.commandInput = ""
 	m.statusMessage = ""
 	m.pendingDeleteOp = false
 	m.editingDream = nil
-	m.titleInput.Focus()
 	_ = m.contentInput.Cursor.SetMode(cursor.CursorBlink)
 	m.contentInput.Blur()
 	return m
