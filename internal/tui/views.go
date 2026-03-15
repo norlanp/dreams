@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -22,6 +23,8 @@ func (m Model) View() string {
 		return m.detailView()
 	case searchView:
 		return m.searchView()
+	case analysisView:
+		return m.analysisView()
 	default:
 		return "Unknown state"
 	}
@@ -52,7 +55,7 @@ func (m Model) listView() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(renderHelp("n: new dream • /: search • enter: view • ↑↓: navigate • q: quit", m.width))
+	b.WriteString(renderHelp("n: new dream • s: statistics • /: search • enter: view • ↑↓: navigate • q: quit", m.width))
 
 	content := b.String()
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
@@ -165,6 +168,71 @@ func (m Model) searchView() string {
 
 	content := b.String()
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+}
+
+func (m Model) analysisView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("Dream Statistics"))
+	b.WriteString("\n")
+	b.WriteString(subtitleStyle.Render("Analysis view"))
+	b.WriteString("\n\n")
+
+	switch {
+	case m.analysisLoading:
+		b.WriteString(itemStyle.MarginLeft(2).Render("Running analysis..."))
+	default:
+		if m.analysisLoadErr != nil {
+			b.WriteString(itemStyle.MarginLeft(2).Render(analysisErrorTitle(m.analysisLoadErr)))
+			b.WriteString("\n")
+			b.WriteString(itemStyle.MarginLeft(2).Render(m.analysisLoadErr.Error()))
+			b.WriteString("\n")
+		}
+
+		if m.analysis != nil {
+			if m.analysisLoadErr != nil {
+				b.WriteString(itemStyle.MarginLeft(2).Render("Showing last cached analysis:"))
+				b.WriteString("\n")
+			}
+
+			b.WriteString(itemStyle.MarginLeft(2).Render("Last analyzed: " + formatAnalysisTimestamp(m.analysis.AnalysisDate)))
+			b.WriteString("\n")
+			b.WriteString(itemStyle.MarginLeft(2).Render(fmt.Sprintf("Dreams analyzed: %d", m.analysis.DreamCount)))
+			b.WriteString("\n")
+			b.WriteString(itemStyle.MarginLeft(2).Render(fmt.Sprintf("Clusters: %d", m.analysis.NClusters)))
+
+			for _, cluster := range m.analysisClusters {
+				b.WriteString("\n")
+				line := fmt.Sprintf("Cluster %d (%d dreams): %s", cluster.ClusterID, cluster.DreamCount, strings.Join(cluster.TopTerms, ", "))
+				b.WriteString(itemStyle.MarginLeft(2).Render(line))
+			}
+		} else if m.analysisLoadErr == nil {
+			b.WriteString(itemStyle.MarginLeft(2).Render("No cached analysis yet."))
+		}
+	}
+
+	b.WriteString("\n\n")
+	b.WriteString(renderHelp("r: rerun analysis • esc/q: back • ctrl+c: quit", m.width))
+
+	content := b.String()
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+}
+
+func formatAnalysisTimestamp(ts time.Time) string {
+	return ts.Local().Format("2006-01-02 15:04 MST")
+}
+
+func analysisErrorTitle(err error) string {
+	switch analysisErrorState(err) {
+	case analysisErrorTooFewDreams:
+		return "Not enough dreams to run analysis."
+	case analysisErrorExecution:
+		return "Analysis execution failed."
+	case analysisErrorParse:
+		return "Failed to parse analysis results."
+	default:
+		return "Analysis unavailable."
+	}
 }
 
 func (m Model) errorView() string {

@@ -1,37 +1,60 @@
-[
-  {
-    "content": "Set up Python infrastructure with uv for scikit-learn clustering",
-    "status": "completed",
-    "priority": "high"
-  },
-  {
-    "content": "Create Python batch processing script for dreamsign extraction",
-    "status": "completed",
-    "priority": "high"
-  },
-  {
-    "content": "Create SQLite tables for storing analysis results",
-    "status": "completed",
-    "priority": "high"
-  },
-  {
-    "content": "Add Go repository methods for analysis storage/retrieval",
-    "status": "completed",
-    "priority": "high"
-  },
-  {
-    "content": "Integrate Python analysis trigger from Go CLI",
-    "status": "pending",
-    "priority": "high"
-  },
-  {
-    "content": "Display clustering results in TUI",
-    "status": "pending",
-    "priority": "medium"
-  },
-  {
-    "content": "Add tests for Python analysis pipeline",
-    "status": "pending",
-    "priority": "medium"
-  }
-]
+{
+  "feature": "dream-statistics",
+  "status": "completed",
+  "todos": [
+    {
+      "id": 1,
+      "description": "Set up Python infrastructure with uv for scikit-learn clustering",
+      "status": "completed",
+      "deps": []
+    },
+    {
+      "id": 2,
+      "description": "Create Python batch processing script for dreamsign extraction",
+      "status": "completed",
+      "deps": [1]
+    },
+    {
+      "id": 3,
+      "description": "Create SQLite tables for storing analysis results",
+      "status": "completed",
+      "deps": [1]
+    },
+    {
+      "id": 4,
+      "description": "Add Go repository methods for analysis storage and retrieval",
+      "status": "completed",
+      "deps": [3]
+    },
+    {
+      "id": 5,
+      "description": "Add list-view s keybinding and analysis view state transition",
+      "status": "completed",
+      "deps": [4]
+    },
+    {
+      "id": 6,
+      "description": "Implement cache-first analysis loading with empty-state fallback and local-time timestamp formatting",
+      "status": "completed",
+      "deps": [4, 5]
+    },
+    {
+      "id": 7,
+      "description": "Integrate async Python re-run flow from analysis view with minimum-dream guardrail and result persistence",
+      "status": "completed",
+      "deps": [2, 4, 5]
+    },
+    {
+      "id": 8,
+      "description": "Render full analysis UI states (loading, success, too-few-dreams, execution failure, parse failure) while preserving prior cache on errors",
+      "status": "completed",
+      "deps": [6, 7]
+    },
+    {
+      "id": 9,
+      "description": "Add end-to-end validation tests and acceptance checklist coverage for navigation, caching, rerun, and timezone correctness",
+      "status": "completed",
+      "deps": [6, 7, 8]
+    }
+  ]
+}

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -21,6 +22,7 @@ type repo interface {
 	GetAnalysisClusters(ctx context.Context, analysisID int64) ([]model.Cluster, error)
 	SaveAnalysis(ctx context.Context, analysisDate time.Time, dreamCount, nClusters int64, resultsJSON string) (*model.Analysis, error)
 	SaveCluster(ctx context.Context, analysisID, clusterID, dreamCount int64, topTerms, dreamIDs string) (*model.Cluster, error)
+	SaveAnalysisWithClusters(ctx context.Context, analysisDate time.Time, dreamCount, nClusters int64, resultsJSON string, clusters []model.Cluster) (*model.Analysis, error)
 }
 
 type viewState int
@@ -31,10 +33,13 @@ const (
 	createView
 	updateView
 	searchView
+	analysisView
 )
 
 type Model struct {
 	repo               repo
+	analysisRunner     analysisRunner
+	analysisMinDreams  int
 	state              viewState
 	width              int
 	height             int
@@ -54,6 +59,10 @@ type Model struct {
 	isSearching        bool
 	hasSearched        bool
 	dreamsBeforeSearch []model.Dream
+	analysis           *model.Analysis
+	analysisClusters   []model.Cluster
+	analysisLoading    bool
+	analysisLoadErr    error
 }
 
 var (
@@ -127,6 +136,8 @@ func NewModel(r repo) Model {
 
 	return Model{
 		repo:              r,
+		analysisRunner:    defaultAnalysisRunner,
+		analysisMinDreams: 5,
 		state:             listView,
 		dreams:            []model.Dream{},
 		contentInput:      ta,

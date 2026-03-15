@@ -2,9 +2,12 @@ package tui
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,6 +38,156 @@ type editorClosedMsg struct {
 	err     error
 }
 
+type analysisLoadedMsg struct {
+	analysis *model.Analysis
+	clusters []model.Cluster
+	err      error
+}
+
+type analysisRerunMsg struct {
+	analysis *model.Analysis
+	clusters []model.Cluster
+	err      error
+}
+
+type analysisErrorKind int
+
+const (
+	analysisErrorGeneric analysisErrorKind = iota
+	analysisErrorTooFewDreams
+	analysisErrorExecution
+	analysisErrorParse
+)
+
+type analysisError struct {
+	kind analysisErrorKind
+	err  error
+}
+
+func (e *analysisError) Error() string {
+	if e == nil || e.err == nil {
+		return "analysis error"
+	}
+
+	return e.err.Error()
+}
+
+func (e *analysisError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+
+	return e.err
+}
+
+func wrapAnalysisError(kind analysisErrorKind, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	return &analysisError{kind: kind, err: err}
+}
+
+func analysisErrorState(err error) analysisErrorKind {
+	if err == nil {
+		return analysisErrorGeneric
+	}
+
+	var analysisErr *analysisError
+	if errors.As(err, &analysisErr) {
+		return analysisErr.kind
+	}
+
+	return analysisErrorGeneric
+}
+
+type analysisRunner func(minDreams int) ([]byte, error)
+
+type pipelineResult struct {
+	Error      string            `json:"error"`
+	DreamCount int64             `json:"dream_count"`
+	NClusters  int64             `json:"n_clusters"`
+	Clusters   []pipelineCluster `json:"clusters"`
+}
+
+type pipelineCluster struct {
+	ClusterID  int64    `json:"cluster_id"`
+	DreamCount int64    `json:"dream_count"`
+	TopTerms   []string `json:"top_terms"`
+	DreamIDs   []int64  `json:"dream_ids"`
+}
+
+var (
+	analysisLoadTimeout   = 5 * time.Second
+	analysisSaveTimeout   = 5 * time.Second
+	analysisRunnerTimeout = 30 * time.Second
+)
+
+func defaultAnalysisRunner(minDreams int) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), analysisRunnerTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(
+		ctx,
+		"uv",
+		"run",
+		"python",
+		"internal/analysis/scripts/extract_dreamsigns.py",
+		"--db-path",
+		"./var/dreams.db",
+		"--min-dreams",
+		strconv.Itoa(minDreams),
+	)
+
+	output, err := cmd.Output()
+	if err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return nil, fmt.Errorf("analysis pipeline timed out after %s", analysisRunnerTimeout)
+		}
+
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return nil, fmt.Errorf("analysis pipeline canceled")
+		}
+
+		exitErr, ok := err.(*exec.ExitError)
+		if ok {
+			stderr := strings.TrimSpace(string(exitErr.Stderr))
+			if stderr == "" {
+				stderr = exitErr.Error()
+			}
+			return nil, fmt.Errorf("failed to execute analysis pipeline: %s", stderr)
+		}
+		return nil, fmt.Errorf("failed to execute analysis pipeline: %w", err)
+	}
+
+	return output, nil
+}
+
+func fetchLatestAnalysis(r repo) analysisLoadedMsg {
+	if r == nil {
+		return analysisLoadedMsg{}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), analysisLoadTimeout)
+	defer cancel()
+
+	analysis, err := r.GetLatestAnalysis(ctx)
+	if err != nil {
+		return analysisLoadedMsg{err: err}
+	}
+
+	if analysis == nil {
+		return analysisLoadedMsg{}
+	}
+
+	clusters, err := r.GetAnalysisClusters(ctx, analysis.ID)
+	if err != nil {
+		return analysisLoadedMsg{err: err}
+	}
+
+	return analysisLoadedMsg{analysis: analysis, clusters: clusters}
+}
+
 func loadDreams(r repo) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -42,6 +195,80 @@ func loadDreams(r repo) tea.Cmd {
 
 		dreams, err := r.ListDreams(ctx)
 		return dreamsLoadedMsg{dreams: dreams, err: err}
+	}
+}
+
+func loadLatestAnalysis(r repo) tea.Cmd {
+	return func() tea.Msg {
+		return fetchLatestAnalysis(r)
+	}
+}
+
+func rerunAnalysis(r repo, minDreams int, run analysisRunner) tea.Cmd {
+	return func() tea.Msg {
+		if r == nil {
+			return analysisRerunMsg{err: fmt.Errorf("analysis repository is not configured")}
+		}
+
+		if run == nil {
+			return analysisRerunMsg{err: fmt.Errorf("analysis runner is not configured")}
+		}
+
+		listCtx, listCancel := context.WithTimeout(context.Background(), analysisLoadTimeout)
+		defer listCancel()
+
+		dreams, err := r.ListDreams(listCtx)
+		if err != nil {
+			return analysisRerunMsg{err: fmt.Errorf("failed to load dreams for analysis: %w", err)}
+		}
+
+		if int64(len(dreams)) < int64(minDreams) {
+			return analysisRerunMsg{err: wrapAnalysisError(analysisErrorTooFewDreams, fmt.Errorf("need at least %d dreams to run analysis", minDreams))}
+		}
+
+		output, err := run(minDreams)
+		if err != nil {
+			return analysisRerunMsg{err: wrapAnalysisError(analysisErrorExecution, err)}
+		}
+
+		var result pipelineResult
+		if err := json.Unmarshal(output, &result); err != nil {
+			return analysisRerunMsg{err: wrapAnalysisError(analysisErrorParse, fmt.Errorf("failed to parse analysis output: %w", err))}
+		}
+
+		if result.Error != "" {
+			return analysisRerunMsg{err: wrapAnalysisError(analysisErrorExecution, fmt.Errorf("analysis pipeline failed: %s", result.Error))}
+		}
+
+		nClusters := result.NClusters
+		if nClusters == 0 {
+			nClusters = int64(len(result.Clusters))
+		}
+
+		clusters := make([]model.Cluster, len(result.Clusters))
+		for i, cluster := range result.Clusters {
+			clusters[i] = model.Cluster{
+				ClusterID:  cluster.ClusterID,
+				DreamCount: cluster.DreamCount,
+				TopTerms:   cluster.TopTerms,
+				DreamIDs:   cluster.DreamIDs,
+			}
+		}
+
+		saveCtx, saveCancel := context.WithTimeout(context.Background(), analysisSaveTimeout)
+		defer saveCancel()
+
+		_, err = r.SaveAnalysisWithClusters(saveCtx, time.Now().UTC(), result.DreamCount, nClusters, string(output), clusters)
+		if err != nil {
+			return analysisRerunMsg{err: fmt.Errorf("failed to persist analysis: %w", err)}
+		}
+
+		latest := fetchLatestAnalysis(r)
+		if latest.err != nil {
+			return analysisRerunMsg{err: latest.err}
+		}
+
+		return analysisRerunMsg{analysis: latest.analysis, clusters: latest.clusters}
 	}
 }
 
@@ -136,6 +363,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleDetailKeys(msg)
 		case searchView:
 			return m.handleSearchKeys(msg)
+		case analysisView:
+			return m.handleAnalysisKeys(msg)
 		}
 
 	case tea.WindowSizeMsg:
@@ -209,6 +438,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.hasSearched = true
 		}
 		return m, nil
+
+	case analysisLoadedMsg:
+		m.analysisLoading = false
+		m.analysisLoadErr = msg.err
+		m.analysis = msg.analysis
+		m.analysisClusters = msg.clusters
+		return m, nil
+
+	case analysisRerunMsg:
+		m.analysisLoading = false
+		if msg.err != nil {
+			m.analysisLoadErr = msg.err
+			return m, nil
+		}
+
+		m.analysisLoadErr = nil
+		m.analysis = msg.analysis
+		m.analysisClusters = msg.clusters
+		return m, nil
 	}
 
 	return m, nil
@@ -228,6 +476,16 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.isSearching = false
 		m.hasSearched = false
 		m.dreamsBeforeSearch = m.dreams
+		return m, nil
+	case "s":
+		m.state = analysisView
+		loaded := fetchLatestAnalysis(m.repo)
+		m.analysisLoading = false
+		m.analysisLoadErr = loaded.err
+		if loaded.err == nil && (loaded.analysis != nil || m.analysis == nil) {
+			m.analysis = loaded.analysis
+			m.analysisClusters = loaded.clusters
+		}
 		return m, nil
 	case "up", "k":
 		if m.selected > 0 {
@@ -617,6 +875,22 @@ func (m Model) handleSearchKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyRunes:
 		m.searchQuery += string(msg.Runes)
 		return m, nil
+	}
+
+	return m, nil
+}
+
+func (m Model) handleAnalysisKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc", "q":
+		m.state = listView
+		return m, nil
+	case "ctrl+c":
+		return m, tea.Quit
+	case "r":
+		m.analysisLoading = true
+		m.analysisLoadErr = nil
+		return m, rerunAnalysis(m.repo, m.analysisMinDreams, m.analysisRunner)
 	}
 
 	return m, nil

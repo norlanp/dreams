@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -172,7 +173,12 @@ func (r *Repository) SaveAnalysis(ctx context.Context, analysisDate time.Time, d
 		return nil, fmt.Errorf("failed to create analysis: %w", err)
 	}
 
-	return toAnalysisModel(a), nil
+	analysis, err := toAnalysisModel(a)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map analysis: %w", err)
+	}
+
+	return analysis, nil
 }
 
 func (r *Repository) SaveCluster(ctx context.Context, analysisID, clusterID, dreamCount int64, topTerms, dreamIDs string) (*model.Cluster, error) {
@@ -190,7 +196,74 @@ func (r *Repository) SaveCluster(ctx context.Context, analysisID, clusterID, dre
 		return nil, fmt.Errorf("failed to create cluster: %w", err)
 	}
 
-	return toClusterModel(c), nil
+	cluster, err := toClusterModel(c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map cluster: %w", err)
+	}
+
+	return cluster, nil
+}
+
+func (r *Repository) SaveAnalysisWithClusters(ctx context.Context, analysisDate time.Time, dreamCount, nClusters int64, resultsJSON string, clusters []model.Cluster) (*model.Analysis, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start analysis transaction: %w", err)
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	qtx := r.queries.WithTx(tx)
+	analysisRow, err := qtx.CreateAnalysis(ctx, sqlc.CreateAnalysisParams{
+		AnalysisDate: analysisDate.Format(time.RFC3339),
+		DreamCount:   dreamCount,
+		NClusters:    nClusters,
+		ResultsJson:  resultsJSON,
+		CreatedAt:    sql.NullTime{Time: time.Now().UTC(), Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create analysis: %w", err)
+	}
+
+	analysis, err := toAnalysisModel(analysisRow)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map analysis: %w", err)
+	}
+
+	for _, cluster := range clusters {
+		topTerms, err := json.Marshal(cluster.TopTerms)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode cluster top terms: %w", err)
+		}
+
+		dreamIDs, err := json.Marshal(cluster.DreamIDs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode cluster dream ids: %w", err)
+		}
+
+		_, err = qtx.CreateCluster(ctx, sqlc.CreateClusterParams{
+			AnalysisID: analysis.ID,
+			ClusterID:  cluster.ClusterID,
+			DreamCount: cluster.DreamCount,
+			TopTerms:   string(topTerms),
+			DreamIds:   string(dreamIDs),
+			CreatedAt:  sql.NullTime{Time: time.Now().UTC(), Valid: true},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create cluster: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit analysis transaction: %w", err)
+	}
+
+	committed = true
+	return analysis, nil
 }
 
 func (r *Repository) GetLatestAnalysis(ctx context.Context) (*model.Analysis, error) {
@@ -202,7 +275,12 @@ func (r *Repository) GetLatestAnalysis(ctx context.Context) (*model.Analysis, er
 		return nil, fmt.Errorf("failed to get latest analysis: %w", err)
 	}
 
-	return toAnalysisModel(a), nil
+	analysis, err := toAnalysisModel(a)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map latest analysis: %w", err)
+	}
+
+	return analysis, nil
 }
 
 func (r *Repository) GetAnalysisClusters(ctx context.Context, analysisID int64) ([]model.Cluster, error) {
@@ -213,7 +291,11 @@ func (r *Repository) GetAnalysisClusters(ctx context.Context, analysisID int64) 
 
 	clusters := make([]model.Cluster, len(rows))
 	for i, c := range rows {
-		clusters[i] = *toClusterModel(c)
+		cluster, err := toClusterModel(c)
+		if err != nil {
+			return nil, fmt.Errorf("failed to map analysis cluster: %w", err)
+		}
+		clusters[i] = *cluster
 	}
 
 	return clusters, nil
@@ -227,14 +309,22 @@ func (r *Repository) ListAnalysisHistory(ctx context.Context) ([]model.Analysis,
 
 	analyses := make([]model.Analysis, len(rows))
 	for i, a := range rows {
-		analyses[i] = *toAnalysisModel(a)
+		analysis, err := toAnalysisModel(a)
+		if err != nil {
+			return nil, fmt.Errorf("failed to map analysis history row: %w", err)
+		}
+		analyses[i] = *analysis
 	}
 
 	return analyses, nil
 }
 
-func toAnalysisModel(a sqlc.DreamAnalysis) *model.Analysis {
-	analysisDate, _ := time.Parse(time.RFC3339, a.AnalysisDate)
+func toAnalysisModel(a sqlc.DreamAnalysis) (*model.Analysis, error) {
+	analysisDate, err := time.Parse(time.RFC3339, a.AnalysisDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse analysis timestamp %q: %w", a.AnalysisDate, err)
+	}
+
 	return &model.Analysis{
 		ID:           a.ID,
 		AnalysisDate: analysisDate,
@@ -242,15 +332,27 @@ func toAnalysisModel(a sqlc.DreamAnalysis) *model.Analysis {
 		NClusters:    a.NClusters,
 		ResultsJSON:  a.ResultsJson,
 		CreatedAt:    a.CreatedAt.Time,
-	}
+	}, nil
 }
 
-func toClusterModel(c sqlc.DreamCluster) *model.Cluster {
-	return &model.Cluster{
+func toClusterModel(c sqlc.DreamCluster) (*model.Cluster, error) {
+	cluster := &model.Cluster{
 		ID:         c.ID,
 		AnalysisID: c.AnalysisID,
 		ClusterID:  c.ClusterID,
 		DreamCount: c.DreamCount,
 		CreatedAt:  c.CreatedAt.Time,
 	}
+
+	err := cluster.SetTopTermsFromJSON(c.TopTerms)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode cluster top terms: %w", err)
+	}
+
+	err = cluster.SetDreamIDsFromJSON(c.DreamIds)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode cluster dream ids: %w", err)
+	}
+
+	return cluster, nil
 }
