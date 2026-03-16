@@ -44,7 +44,7 @@ internal/tui/               # Go TUI (existing)
 ├── update.go
 └── views.go
 
-var/                        # Data storage (existing)
+./                          # Data storage (root)
 └── dreams.db              # SQLite database
 ```
 

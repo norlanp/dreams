@@ -26,4 +26,4 @@ vet:
 
 clean:
 	rm -rf $(BUILD_DIR)
-	rm -f ./var/dreams.db
+	rm -f ./dreams.db

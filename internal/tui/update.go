@@ -15,6 +15,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"dreams/internal/model"
+	"dreams/internal/storage"
 )
 
 type dreamsLoadedMsg struct {
@@ -127,6 +128,11 @@ func defaultAnalysisRunner(minDreams int) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), analysisRunnerTimeout)
 	defer cancel()
 
+	dbPath, err := storage.DefaultDBPath()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve database path: %w", err)
+	}
+
 	cmd := exec.CommandContext(
 		ctx,
 		"uv",
@@ -134,7 +140,7 @@ func defaultAnalysisRunner(minDreams int) ([]byte, error) {
 		"python",
 		"internal/analysis/scripts/extract_dreamsigns.py",
 		"--db-path",
-		"./var/dreams.db",
+		dbPath,
 		"--min-dreams",
 		strconv.Itoa(minDreams),
 	)

@@ -12,6 +12,7 @@ dreams
 *.out
 
 # Database
+dreams.db
 *.db
 *.db-journal
 

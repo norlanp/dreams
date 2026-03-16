@@ -26,6 +26,10 @@ go run cmd/main.go
 make dev
 ```
 
+By default the app uses `dreams.db` in the current project root when running with `go run`.
+For built binaries, it uses `dreams.db` side-by-side with the executable.
+Set `DREAMS_DB_PATH` to override either behavior.
+
 ## Build
 
 ```bash
@@ -64,7 +68,7 @@ internal/
   storage/               # Database layer
     repository.go
     sqlc/               # Generated SQLC code
-var/                     # Database storage (gitignored)
+dreams.db                # SQLite database file (gitignored)
 ```
 
 ## Usage

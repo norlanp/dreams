@@ -18,7 +18,7 @@ This checklist maps dream-statistics requirements and acceptance criteria to aut
 
 ## Manual Acceptance Checks
 
-Run these checks in a local environment with an existing `./var/dreams.db`.
+Run these checks in a local environment with an existing `./dreams.db`.
 
 | AC | Manual Check | Expected Result |
 | --- | --- | --- |

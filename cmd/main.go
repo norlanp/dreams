@@ -16,7 +16,12 @@ func main() {
 }
 
 func run() error {
-	repo, err := storage.NewRepository("./var/dreams.db")
+	dbPath, err := storage.DefaultDBPath()
+	if err != nil {
+		return fmt.Errorf("failed to resolve database path: %w", err)
+	}
+
+	repo, err := storage.NewRepository(dbPath)
 	if err != nil {
 		return fmt.Errorf("failed to initialize storage: %w", err)
 	}

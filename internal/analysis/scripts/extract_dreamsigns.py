@@ -92,7 +92,7 @@ def extract_dreamsigns(
             best_k = 2
 
             for k in range(2, max_clusters + 1):
-                kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+                kmeans = KMeans(n_clusters=k, random_state=42, n_init="auto")
                 labels = kmeans.fit_predict(tfidf_matrix)
                 score = silhouette_score(tfidf_matrix, labels)
 
@@ -103,7 +103,7 @@ def extract_dreamsigns(
             n_clusters = best_k
 
     # Final clustering
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init="auto")
     labels = kmeans.fit_predict(tfidf_matrix)
 
     # Get feature names
@@ -136,7 +136,7 @@ def main():
         description="Extract dreamsigns from dream journal using clustering"
     )
     parser.add_argument(
-        "--db-path", type=str, default="var/dreams.db", help="Path to SQLite database"
+        "--db-path", type=str, default="dreams.db", help="Path to SQLite database"
     )
     parser.add_argument("--output", type=str, help="Output file path (JSON format)")
     parser.add_argument(
