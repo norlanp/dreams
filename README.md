@@ -8,6 +8,8 @@ A CLI dream journal with a beautiful TUI interface. Record, view, and analyze yo
 - **SQLite Storage**: Dreams persist locally in a SQLite database
 - **Keyboard Navigation**: Full keyboard control for quick entry and navigation
 - **View & Edit**: Browse your dream history and edit entries
+- **Export to Markdown**: Export all dreams to individual Markdown files for backup and portability
+- **Dream Statistics**: Analyze dream patterns with automatic clustering
 
 ## Tech Stack
 
@@ -75,10 +77,24 @@ dreams.db                # SQLite database file (gitignored)
 
 Launch the application to enter the TUI. Use keyboard shortcuts to navigate:
 
-- `tab` - Switch between views
-- `enter` - Select/confirm
+- `n` - Create new dream
+- `e` - Export dreams to Markdown
+- `s` - View dream statistics
+- `/` - Search dreams
+- `enter` - View selected dream
+- `↑↓` or `j/k` - Navigate list
 - `esc` - Go back/cancel
-- `ctrl+c` - Quit
+- `q` - Quit
+
+### CLI Commands
+
+```bash
+# Export all dreams to a directory
+dreams --export ./my-dreams
+
+# Launch TUI (default)
+dreams
+```
 
 ## License
 

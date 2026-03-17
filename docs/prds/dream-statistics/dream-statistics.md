@@ -1,4 +1,4 @@
-Meta: ID=PRD-dream-statistics | Status=approved | Size=M
+Meta: ID=PRD-dream-statistics | Status=completed | Size=M
 
 Problem: Users of the Dreams CLI need fast, objective identification of recurring dream patterns (dreamsigns) from journal entries | Lucid dreamers and frequent journal users | Manual review is slow and inconsistent, reducing follow-through and insight quality
 Scope: IN [x] Batch dream clustering from existing SQLite entries, cached results display in TUI, explicit re-run flow, local-time timestamping, minimum-data guardrails, and user-facing error states | OUT [ ] Real-time or streaming analysis, historical trend comparison across multiple runs, cloud sync, model training UI, and non-local storage backends

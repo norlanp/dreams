@@ -1,0 +1,145 @@
+{
+  "todos": [
+    {
+      "id": "1",
+      "text": "Create internal/export/ directory structure",
+      "status": "completed",
+      "priority": "high",
+      "phase": "1"
+    },
+    {
+      "id": "2",
+      "text": "Implement ExportAll function in exporter.go",
+      "status": "completed",
+      "priority": "high",
+      "phase": "1"
+    },
+    {
+      "id": "3",
+      "text": "Implement filename generation with timestamp format",
+      "status": "completed",
+      "priority": "high",
+      "phase": "1"
+    },
+    {
+      "id": "4",
+      "text": "Implement frontmatter generation",
+      "status": "completed",
+      "priority": "high",
+      "phase": "1"
+    },
+    {
+      "id": "5",
+      "text": "Implement atomic file write (temp + rename)",
+      "status": "completed",
+      "priority": "high",
+      "phase": "1"
+    },
+    {
+      "id": "6",
+      "text": "Write unit tests for exporter functions",
+      "status": "completed",
+      "priority": "high",
+      "phase": "1"
+    },
+    {
+      "id": "7",
+      "text": "Add --export flag to cmd/main.go",
+      "status": "completed",
+      "priority": "medium",
+      "phase": "2"
+    },
+    {
+      "id": "8",
+      "text": "Implement CLI export handler with stdout output",
+      "status": "completed",
+      "priority": "medium",
+      "phase": "2"
+    },
+    {
+      "id": "9",
+      "text": "Add ExportMode to TUI PageState",
+      "status": "completed",
+      "priority": "medium",
+      "phase": "3"
+    },
+    {
+      "id": "10",
+      "text": "Add 'e' keybinding handler in list view",
+      "status": "completed",
+      "priority": "medium",
+      "phase": "3"
+    },
+    {
+      "id": "11",
+      "text": "Create export directory prompt view",
+      "status": "completed",
+      "priority": "medium",
+      "phase": "3"
+    },
+    {
+      "id": "12",
+      "text": "Create export confirmation view",
+      "status": "completed",
+      "priority": "medium",
+      "phase": "3"
+    },
+    {
+      "id": "13",
+      "text": "Create export loading view with spinner",
+      "status": "completed",
+      "priority": "medium",
+      "phase": "3"
+    },
+    {
+      "id": "14",
+      "text": "Create export success/failure view",
+      "status": "completed",
+      "priority": "medium",
+      "phase": "3"
+    },
+    {
+      "id": "15",
+      "text": "Test CLI export with real database",
+      "status": "completed",
+      "priority": "low",
+      "phase": "4"
+    },
+    {
+      "id": "16",
+      "text": "Test TUI export flow manually",
+      "status": "completed",
+      "priority": "low",
+      "phase": "4"
+    },
+    {
+      "id": "17",
+      "text": "Test error conditions (empty db, non-writable dir)",
+      "status": "completed",
+      "priority": "low",
+      "phase": "4"
+    },
+    {
+      "id": "18",
+      "text": "Update README.md with export feature",
+      "status": "completed",
+      "priority": "low",
+      "phase": "5"
+    },
+    {
+      "id": "19",
+      "text": "Update TUI help view with 'e' keybinding",
+      "status": "completed",
+      "priority": "low",
+      "phase": "5"
+    },
+    {
+      "id": "20",
+      "text": "Write completion summary",
+      "status": "completed",
+      "priority": "low",
+      "phase": "5"
+    }
+  ],
+  "status": "completed"
+}

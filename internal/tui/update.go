@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/cursor"
 	tea "github.com/charmbracelet/bubbletea"
 
+	"dreams/internal/export"
 	"dreams/internal/model"
 	"dreams/internal/storage"
 )
@@ -49,6 +50,11 @@ type analysisRerunMsg struct {
 	analysis *model.Analysis
 	clusters []model.Cluster
 	err      error
+}
+
+type exportCompletedMsg struct {
+	count int
+	err   error
 }
 
 type analysisErrorKind int
@@ -371,6 +377,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleSearchKeys(msg)
 		case analysisView:
 			return m.handleAnalysisKeys(msg)
+		case exportView:
+			return m.handleExportKeys(msg)
 		}
 
 	case tea.WindowSizeMsg:
@@ -463,6 +471,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.analysis = msg.analysis
 		m.analysisClusters = msg.clusters
 		return m, nil
+
+	case exportCompletedMsg:
+		m.exportLoading = false
+		m.exportComplete = true
+		m.exportResultCount = msg.count
+		m.exportErr = msg.err
+		return m, nil
 	}
 
 	return m, nil
@@ -492,6 +507,15 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.analysis = loaded.analysis
 			m.analysisClusters = loaded.clusters
 		}
+		return m, nil
+	case "e":
+		m.exportDirectory = "./dreams-export"
+		m.exportConfirming = true
+		m.exportLoading = false
+		m.exportComplete = false
+		m.exportResultCount = 0
+		m.exportErr = nil
+		m.state = exportView
 		return m, nil
 	case "up", "k":
 		if m.selected > 0 {
@@ -923,4 +947,60 @@ func (m Model) resetCreateForm() Model {
 	_ = m.contentInput.Cursor.SetMode(cursor.CursorBlink)
 	m.contentInput.Blur()
 	return m
+}
+
+func runExport(dreams []model.Dream, directory string) tea.Cmd {
+	return func() tea.Msg {
+		count, err := export.ExportAll(dreams, directory)
+		return exportCompletedMsg{count: count, err: err}
+	}
+}
+
+func (m Model) resetExportState() Model {
+	m.exportDirectory = ""
+	m.exportConfirming = false
+	m.exportLoading = false
+	m.exportComplete = false
+	m.exportResultCount = 0
+	m.exportErr = nil
+	return m
+}
+
+func (m Model) handleExportKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m = m.resetExportState()
+		m.state = listView
+		return m, nil
+	case "ctrl+c":
+		return m, tea.Quit
+	case "enter":
+		if m.exportComplete {
+			m = m.resetExportState()
+			m.state = listView
+			return m, nil
+		}
+		if m.exportConfirming && !m.exportLoading {
+			m.exportConfirming = false
+			m.exportLoading = true
+			return m, runExport(m.dreams, m.exportDirectory)
+		}
+		return m, nil
+	}
+
+	if m.exportConfirming && !m.exportLoading && !m.exportComplete {
+		switch msg.Type {
+		case tea.KeyBackspace:
+			runes := []rune(m.exportDirectory)
+			if len(runes) > 0 {
+				m.exportDirectory = string(runes[:len(runes)-1])
+			}
+			return m, nil
+		case tea.KeyRunes:
+			m.exportDirectory += string(msg.Runes)
+			return m, nil
+		}
+	}
+
+	return m, nil
 }

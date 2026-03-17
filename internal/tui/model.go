@@ -34,6 +34,7 @@ const (
 	updateView
 	searchView
 	analysisView
+	exportView
 )
 
 type Model struct {
@@ -63,6 +64,12 @@ type Model struct {
 	analysisClusters   []model.Cluster
 	analysisLoading    bool
 	analysisLoadErr    error
+	exportDirectory    string
+	exportConfirming   bool
+	exportLoading      bool
+	exportComplete     bool
+	exportResultCount  int
+	exportErr          error
 }
 
 var (

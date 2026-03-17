@@ -25,6 +25,8 @@ func (m Model) View() string {
 		return m.searchView()
 	case analysisView:
 		return m.analysisView()
+	case exportView:
+		return m.exportView()
 	default:
 		return "Unknown state"
 	}
@@ -55,7 +57,7 @@ func (m Model) listView() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(renderHelp("n: new dream • s: statistics • /: search • enter: view • ↑↓: navigate • q: quit", m.width))
+	b.WriteString(renderHelp("n: new dream • s: statistics • e: export • /: search • enter: view • ↑↓: navigate • q: quit", m.width))
 
 	content := b.String()
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
@@ -213,6 +215,41 @@ func (m Model) analysisView() string {
 
 	b.WriteString("\n\n")
 	b.WriteString(renderHelp("r: rerun analysis • esc/q: back • ctrl+c: quit", m.width))
+
+	content := b.String()
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+}
+
+func (m Model) exportView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("Export Dreams"))
+	b.WriteString("\n\n")
+
+	switch {
+	case m.exportLoading:
+		b.WriteString(itemStyle.MarginLeft(2).Render("Exporting dreams..."))
+	case m.exportComplete:
+		if m.exportErr != nil {
+			b.WriteString(itemStyle.MarginLeft(2).Render(fmt.Sprintf("Error: %s", m.exportErr.Error())))
+			b.WriteString("\n\n")
+			b.WriteString(itemStyle.MarginLeft(2).Render(fmt.Sprintf("Partially exported %d dream(s) to %s", m.exportResultCount, m.exportDirectory)))
+		} else {
+			b.WriteString(itemStyle.MarginLeft(2).Render(fmt.Sprintf("Exported %d dream(s) to %s", m.exportResultCount, m.exportDirectory)))
+		}
+		b.WriteString("\n\n")
+		b.WriteString(renderHelp("enter: return to list", m.width))
+	default:
+		b.WriteString(itemStyle.MarginLeft(2).Render(fmt.Sprintf("Directory: %s", m.exportDirectory)))
+		b.WriteString("\n\n")
+		if len(m.dreams) > 0 {
+			b.WriteString(confirmPromptStyle.Render(fmt.Sprintf("Export %d dream(s) to %s?", len(m.dreams), m.exportDirectory)))
+		} else {
+			b.WriteString(confirmPromptStyle.Render("No dreams to export."))
+		}
+		b.WriteString("\n\n")
+		b.WriteString(renderHelp("enter: confirm • esc: cancel • type: edit directory", m.width))
+	}
 
 	content := b.String()
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
