@@ -1,0 +1,114 @@
+{
+  "status": "completed",
+  "feature": "night-priming",
+  "created": "2025-03-17",
+  "todos": [
+    {
+      "id": "NP-001",
+      "description": "Define priming domain contracts and source labels for generator + TUI state (AC-002, AC-003).",
+      "status": "completed",
+      "deps": []
+    },
+    {
+      "id": "NP-002",
+      "description": "Add DB migration for priming_cache and priming_logs tables with fields needed for TTL and outcome logging (AC-006, AC-009).",
+      "status": "completed",
+      "deps": []
+    },
+    {
+      "id": "NP-003",
+      "description": "Implement storage methods for cache read/write with 24h freshness checks and priming log inserts (AC-006, AC-009).",
+      "status": "completed",
+      "deps": [
+        "NP-002"
+      ]
+    },
+    {
+      "id": "NP-004",
+      "description": "Implement personalized source adapter from latest clustering output with graceful skip when unavailable (AC-004).",
+      "status": "completed",
+      "deps": [
+        "NP-001"
+      ]
+    },
+    {
+      "id": "NP-005",
+      "description": "Implement Reddit adapter for r/LucidDreaming with text-rich filtering and defensive parsing (AC-005).",
+      "status": "completed",
+      "deps": [
+        "NP-001"
+      ]
+    },
+    {
+      "id": "NP-006",
+      "description": "Wire Reddit cache-first behavior: use fresh cache before fetch, persist fetched posts on miss (AC-006).",
+      "status": "completed",
+      "deps": [
+        "NP-003",
+        "NP-005"
+      ]
+    },
+    {
+      "id": "NP-007",
+      "description": "Implement AI adapter with required env validation and one retry via AI_MODEL_FALLBACK (AC-007, AC-008).",
+      "status": "completed",
+      "deps": [
+        "NP-001"
+      ]
+    },
+    {
+      "id": "NP-008",
+      "description": "Implement static template source as deterministic terminal fallback (AC-003, AC-011).",
+      "status": "completed",
+      "deps": [
+        "NP-001"
+      ]
+    },
+    {
+      "id": "NP-009",
+      "description": "Implement strict fallback orchestrator sequence Personalized -> Community -> AI Generated -> Template (AC-003).",
+      "status": "completed",
+      "deps": [
+        "NP-004",
+        "NP-006",
+        "NP-007",
+        "NP-008"
+      ]
+    },
+    {
+      "id": "NP-010",
+      "description": "Emit observability events for attempts, transitions, cache hit/miss, and terminal failures; persist display outcomes (AC-009, AC-010).",
+      "status": "completed",
+      "deps": [
+        "NP-003",
+        "NP-009"
+      ]
+    },
+    {
+      "id": "NP-011",
+      "description": "Integrate night priming TUI flow: p to open, n for next content, esc to exit with prior list selection intact (AC-001, AC-002, AC-011).",
+      "status": "completed",
+      "deps": [
+        "NP-009"
+      ]
+    },
+    {
+      "id": "NP-012",
+      "description": "Add table-driven unit tests for source behavior, fallback matrix, and AI config validation paths (AC-003, AC-004, AC-007, AC-008, AC-012).",
+      "status": "completed",
+      "deps": [
+        "NP-009"
+      ]
+    },
+    {
+      "id": "NP-013",
+      "description": "Add integration tests for cache TTL reuse, cache-hit network bypass, degraded-mode continuity, and logging/event side effects (AC-006, AC-009, AC-010, AC-011, AC-012).",
+      "status": "completed",
+      "deps": [
+        "NP-010",
+        "NP-011",
+        "NP-012"
+      ]
+    }
+  ]
+}

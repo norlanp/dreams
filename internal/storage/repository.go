@@ -319,6 +319,90 @@ func (r *Repository) ListAnalysisHistory(ctx context.Context) ([]model.Analysis,
 	return analyses, nil
 }
 
+func (r *Repository) GetFreshPrimingCache(ctx context.Context, source string, now time.Time, ttl time.Duration) (*model.PrimingCache, error) {
+	if ttl <= 0 {
+		return nil, fmt.Errorf("ttl must be greater than zero")
+	}
+
+	cache, err := r.queries.GetPrimingCache(ctx, source)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get priming cache: %w", err)
+	}
+
+	if cache.FetchedAt.Before(now.Add(-ttl)) {
+		return nil, nil
+	}
+
+	var payload []string
+	if err := json.Unmarshal([]byte(cache.PayloadJson), &payload); err != nil {
+		return nil, fmt.Errorf("failed to decode priming cache payload: %w", err)
+	}
+
+	return &model.PrimingCache{
+		Source:    cache.Source,
+		Payload:   payload,
+		FetchedAt: cache.FetchedAt,
+	}, nil
+}
+
+func (r *Repository) SavePrimingCache(ctx context.Context, source string, payload []string, fetchedAt time.Time) error {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to encode priming cache payload: %w", err)
+	}
+
+	err = r.queries.UpsertPrimingCache(ctx, sqlc.UpsertPrimingCacheParams{
+		Source:      source,
+		PayloadJson: string(data),
+		FetchedAt:   fetchedAt,
+		UpdatedAt:   sql.NullTime{Time: time.Now().UTC(), Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to save priming cache: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Repository) SavePrimingLog(ctx context.Context, source, outcome, detail, content string, createdAt time.Time) error {
+	err := r.queries.InsertPrimingLog(ctx, sqlc.InsertPrimingLogParams{
+		CreatedAt: createdAt,
+		Source:    source,
+		Outcome:   outcome,
+		Detail:    detail,
+		Content:   content,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to save priming log: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Repository) ListPrimingLogs(ctx context.Context) ([]model.PrimingLog, error) {
+	rows, err := r.queries.ListPrimingLogs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list priming logs: %w", err)
+	}
+
+	logs := make([]model.PrimingLog, len(rows))
+	for i, row := range rows {
+		logs[i] = model.PrimingLog{
+			ID:        row.ID,
+			CreatedAt: row.CreatedAt,
+			Source:    row.Source,
+			Outcome:   row.Outcome,
+			Detail:    row.Detail,
+			Content:   row.Content,
+		}
+	}
+
+	return logs, nil
+}
+
 func toAnalysisModel(a sqlc.DreamAnalysis) (*model.Analysis, error) {
 	analysisDate, err := time.Parse(time.RFC3339, a.AnalysisDate)
 	if err != nil {

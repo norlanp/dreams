@@ -27,6 +27,8 @@ func (m Model) View() string {
 		return m.analysisView()
 	case exportView:
 		return m.exportView()
+	case nightView:
+		return m.nightPrimingView()
 	default:
 		return "Unknown state"
 	}
@@ -57,10 +59,48 @@ func (m Model) listView() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(renderHelp("n: new dream • s: statistics • e: export • /: search • enter: view • ↑↓: navigate • q: quit", m.width))
+	b.WriteString(renderHelp("n: new dream • p: night priming • s: statistics • e: export • /: search • enter: view • ↑↓: navigate • q: quit", m.width))
 
 	content := b.String()
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, content)
+}
+
+func (m Model) nightPrimingView() string {
+	var b strings.Builder
+
+	b.WriteString(titleStyle.Render("Night Priming"))
+	b.WriteString("\n")
+	b.WriteString(subtitleStyle.Render("Prepare for recall and lucidity"))
+	b.WriteString("\n\n")
+
+	if m.nightLoading {
+		b.WriteString(itemStyle.MarginLeft(2).Render("Loading priming content..."))
+		b.WriteString("\n\n")
+	}
+
+	if m.nightSourceLabel != "" {
+		sourceLine := fmt.Sprintf("Source: %s", m.nightSourceLabel)
+		b.WriteString(itemStyle.MarginLeft(2).Render(sourceLine))
+		b.WriteString("\n\n")
+	}
+
+	if m.nightContent != "" {
+		b.WriteString(itemStyle.MarginLeft(2).Render(wrapText(m.nightContent, m.width-6)))
+		b.WriteString("\n\n")
+	}
+
+	if m.nightStatus != "" {
+		b.WriteString(statusStyle.MarginLeft(2).Render(m.nightStatus))
+		b.WriteString("\n\n")
+	}
+
+	if m.nightContent == "" && !m.nightLoading {
+		b.WriteString(itemStyle.MarginLeft(2).Render("Press n to load priming content."))
+		b.WriteString("\n\n")
+	}
+
+	b.WriteString(renderHelp("n: next priming • esc: back to list • ctrl+c: quit", m.width))
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, b.String())
 }
 
 func (m Model) createView() string {

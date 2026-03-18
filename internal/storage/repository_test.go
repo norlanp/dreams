@@ -161,3 +161,58 @@ func createTestRepository(t *testing.T) *Repository {
 
 	return repo
 }
+
+func TestRepositoryPrimingCache_ShouldRespectFreshnessTTL(t *testing.T) {
+	repo := createTestRepository(t)
+	t.Cleanup(func() {
+		_ = repo.Close()
+	})
+
+	ctx := context.Background()
+	fetchedAt := time.Date(2025, 3, 10, 22, 0, 0, 0, time.UTC)
+	err := repo.SavePrimingCache(ctx, "Community", []string{"post-a", "post-b"}, fetchedAt)
+	if err != nil {
+		t.Fatalf("expected cache save to succeed: %v", err)
+	}
+
+	hit, err := repo.GetFreshPrimingCache(ctx, "Community", fetchedAt.Add(23*time.Hour), 24*time.Hour)
+	if err != nil {
+		t.Fatalf("expected fresh cache read to succeed: %v", err)
+	}
+	if hit == nil || len(hit.Payload) != 2 {
+		t.Fatalf("expected fresh cache hit with payload, got %#v", hit)
+	}
+
+	miss, err := repo.GetFreshPrimingCache(ctx, "Community", fetchedAt.Add(25*time.Hour), 24*time.Hour)
+	if err != nil {
+		t.Fatalf("expected stale cache read to succeed: %v", err)
+	}
+	if miss != nil {
+		t.Fatalf("expected stale cache miss, got %#v", miss)
+	}
+}
+
+func TestRepositoryPrimingLog_ShouldPersistDisplayOutcomes(t *testing.T) {
+	repo := createTestRepository(t)
+	t.Cleanup(func() {
+		_ = repo.Close()
+	})
+
+	ctx := context.Background()
+	now := time.Date(2025, 3, 10, 23, 0, 0, 0, time.UTC)
+	err := repo.SavePrimingLog(ctx, "Template", "success", "Recovered via fallback", "Prime tonight", now)
+	if err != nil {
+		t.Fatalf("expected priming log save to succeed: %v", err)
+	}
+
+	logs, err := repo.ListPrimingLogs(ctx)
+	if err != nil {
+		t.Fatalf("expected priming logs listing to succeed: %v", err)
+	}
+	if len(logs) != 1 {
+		t.Fatalf("expected one priming log, got %d", len(logs))
+	}
+	if logs[0].Source != "Template" || logs[0].Outcome != "success" {
+		t.Fatalf("expected persisted source/outcome, got %#v", logs[0])
+	}
+}

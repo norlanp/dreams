@@ -6,6 +6,7 @@ package sqlc
 
 import (
 	"database/sql"
+	"time"
 )
 
 type Dream struct {
@@ -32,4 +33,21 @@ type DreamCluster struct {
 	TopTerms   string       `json:"top_terms"`
 	DreamIds   string       `json:"dream_ids"`
 	CreatedAt  sql.NullTime `json:"created_at"`
+}
+
+type PrimingCache struct {
+	ID          int64        `json:"id"`
+	Source      string       `json:"source"`
+	PayloadJson string       `json:"payload_json"`
+	FetchedAt   time.Time    `json:"fetched_at"`
+	UpdatedAt   sql.NullTime `json:"updated_at"`
+}
+
+type PrimingLog struct {
+	ID        int64     `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	Source    string    `json:"source"`
+	Outcome   string    `json:"outcome"`
+	Detail    string    `json:"detail"`
+	Content   string    `json:"content"`
 }

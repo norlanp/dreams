@@ -16,6 +16,7 @@ import (
 
 	"dreams/internal/export"
 	"dreams/internal/model"
+	"dreams/internal/priming"
 	"dreams/internal/storage"
 )
 
@@ -55,6 +56,10 @@ type analysisRerunMsg struct {
 type exportCompletedMsg struct {
 	count int
 	err   error
+}
+
+type primingLoadedMsg struct {
+	result priming.Result
 }
 
 type analysisErrorKind int
@@ -379,6 +384,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleAnalysisKeys(msg)
 		case exportView:
 			return m.handleExportKeys(msg)
+		case nightView:
+			return m.handleNightKeys(msg)
 		}
 
 	case tea.WindowSizeMsg:
@@ -478,6 +485,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.exportResultCount = msg.count
 		m.exportErr = msg.err
 		return m, nil
+
+	case primingLoadedMsg:
+		m.nightLoading = false
+		m.nightStatus = msg.result.Status
+		if msg.result.Err != nil {
+			m.nightContent = ""
+			m.nightSourceLabel = string(msg.result.Source)
+			if m.nightStatus == "" {
+				m.nightStatus = msg.result.Err.Error()
+			}
+			return m, nil
+		}
+
+		m.nightContent = msg.result.Text
+		m.nightSourceLabel = string(msg.result.Source)
+		return m, nil
 	}
 
 	return m, nil
@@ -517,6 +540,13 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.exportErr = nil
 		m.state = exportView
 		return m, nil
+	case "p":
+		m.state = nightView
+		m.nightStatus = ""
+		m.nightContent = ""
+		m.nightSourceLabel = ""
+		m.nightLoading = true
+		return m, loadPriming(m.nightGenerator)
 	case "up", "k":
 		if m.selected > 0 {
 			m.selected--
@@ -534,6 +564,41 @@ func (m Model) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.state = detailView
 		}
 		return m, nil
+	}
+
+	return m, nil
+}
+
+func loadPriming(generator primingGenerator) tea.Cmd {
+	return func() tea.Msg {
+		if generator == nil {
+			return primingLoadedMsg{result: priming.Result{Err: fmt.Errorf("night priming generator is not configured")}}
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		return primingLoadedMsg{result: generator.Next(ctx)}
+	}
+}
+
+func (m Model) handleNightKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.state = listView
+		m.nightLoading = false
+		return m, nil
+	case "n":
+		if m.nightLoading {
+			return m, nil
+		}
+		m.nightLoading = true
+		m.nightStatus = ""
+		m.nightContent = ""
+		m.nightSourceLabel = ""
+		return m, loadPriming(m.nightGenerator)
+	case "ctrl+c":
+		return m, tea.Quit
 	}
 
 	return m, nil

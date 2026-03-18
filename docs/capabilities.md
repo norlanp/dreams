@@ -9,3 +9,4 @@
 | search-dreams | completed | - | - |
 | dream-statistics | completed | docs/prds/dream-statistics/dream-statistics.md | M |
 | export-markdown | completed | docs/prds/export-markdown/export-markdown.md | M |
+| night-priming | completed | docs/prds/night-priming/night-priming.md | L |

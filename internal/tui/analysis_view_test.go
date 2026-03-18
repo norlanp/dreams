@@ -126,6 +126,18 @@ func (r *analysisTestRepo) SaveAnalysisWithClusters(ctx context.Context, analysi
 	return analysis, nil
 }
 
+func (r *analysisTestRepo) GetFreshPrimingCache(ctx context.Context, source string, now time.Time, ttl time.Duration) (*model.PrimingCache, error) {
+	return nil, nil
+}
+
+func (r *analysisTestRepo) SavePrimingCache(ctx context.Context, source string, payload []string, fetchedAt time.Time) error {
+	return nil
+}
+
+func (r *analysisTestRepo) SavePrimingLog(ctx context.Context, source, outcome, detail, content string, createdAt time.Time) error {
+	return nil
+}
+
 func TestModelUpdate_ShouldRenderRepoCachedAnalysisOnFirstAnalysisViewRender(t *testing.T) {
 	repo := &analysisTestRepo{
 		latestAnalysis: &model.Analysis{

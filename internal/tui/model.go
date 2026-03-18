@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"dreams/internal/model"
+	"dreams/internal/priming"
 )
 
 type repo interface {
@@ -23,6 +24,9 @@ type repo interface {
 	SaveAnalysis(ctx context.Context, analysisDate time.Time, dreamCount, nClusters int64, resultsJSON string) (*model.Analysis, error)
 	SaveCluster(ctx context.Context, analysisID, clusterID, dreamCount int64, topTerms, dreamIDs string) (*model.Cluster, error)
 	SaveAnalysisWithClusters(ctx context.Context, analysisDate time.Time, dreamCount, nClusters int64, resultsJSON string, clusters []model.Cluster) (*model.Analysis, error)
+	GetFreshPrimingCache(ctx context.Context, source string, now time.Time, ttl time.Duration) (*model.PrimingCache, error)
+	SavePrimingCache(ctx context.Context, source string, payload []string, fetchedAt time.Time) error
+	SavePrimingLog(ctx context.Context, source, outcome, detail, content string, createdAt time.Time) error
 }
 
 type viewState int
@@ -35,7 +39,12 @@ const (
 	searchView
 	analysisView
 	exportView
+	nightView
 )
+
+type primingGenerator interface {
+	Next(ctx context.Context) priming.Result
+}
 
 type Model struct {
 	repo               repo
@@ -70,6 +79,11 @@ type Model struct {
 	exportComplete     bool
 	exportResultCount  int
 	exportErr          error
+	nightGenerator     primingGenerator
+	nightLoading       bool
+	nightContent       string
+	nightSourceLabel   string
+	nightStatus        string
 }
 
 var (
@@ -149,6 +163,7 @@ func NewModel(r repo) Model {
 		dreams:            []model.Dream{},
 		contentInput:      ta,
 		contentInsertMode: true,
+		nightGenerator:    priming.NewDefaultGenerator(r),
 	}
 }
 
