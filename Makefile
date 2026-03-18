@@ -3,9 +3,11 @@
 BINARY_NAME=dreams
 BUILD_DIR=./build
 CMD_PATH=./cmd/main.go
+LOG_FILE=./dreams.log
 
 dev:
-	go run $(CMD_PATH)
+	: > $(LOG_FILE)
+	go run $(CMD_PATH) 2>> $(LOG_FILE)
 
 build:
 	mkdir -p $(BUILD_DIR)
