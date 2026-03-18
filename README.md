@@ -32,6 +32,9 @@ By default the app uses `dreams.db` in the current project root when running wit
 For built binaries, it uses `dreams.db` side-by-side with the executable.
 Set `DREAMS_DB_PATH` to override either behavior.
 
+Environment variables are loaded from `.env` automatically when present.
+Copy `.env.example` to `.env` and fill in the values you need.
+
 ## Build
 
 ```bash
