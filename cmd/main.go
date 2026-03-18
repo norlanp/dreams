@@ -2,9 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"os"
+	"path/filepath"
+
+	"github.com/joho/godotenv"
 
 	"dreams/internal/export"
 	"dreams/internal/storage"
@@ -19,6 +24,16 @@ func main() {
 }
 
 func run() error {
+	if err := loadEnvFile(".env"); err != nil {
+		return err
+	}
+
+	logFile, err := configureLogging("./var/dreams.log")
+	if err != nil {
+		return err
+	}
+	defer logFile.Close()
+
 	var exportDir string
 	flag.StringVar(&exportDir, "export", "", "Export all dreams to the specified directory as markdown files")
 	flag.Parse()
@@ -50,4 +65,29 @@ func run() error {
 	}
 
 	return tui.Run(repo)
+}
+
+func configureLogging(path string) (*os.File, error) {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, fmt.Errorf("failed to create log directory: %w", err)
+	}
+
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open log file: %w", err)
+	}
+
+	log.SetOutput(file)
+	log.SetFlags(log.LstdFlags)
+	return file, nil
+}
+
+func loadEnvFile(path string) error {
+	err := godotenv.Load(path)
+	if err == nil || errors.Is(err, os.ErrNotExist) || os.IsNotExist(err) {
+		return nil
+	}
+
+	return fmt.Errorf("failed to load env file %s: %w", path, err)
 }
