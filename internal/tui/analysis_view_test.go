@@ -588,6 +588,118 @@ func TestModelView_ShouldRenderLoadingStateInAnalysisView(t *testing.T) {
 	}
 }
 
+func TestRenderClusterBar_ShouldScaleToDreamShare(t *testing.T) {
+	t.Setenv("DREAMS_ASCII_BARS", "0")
+	t.Setenv("TERM", "xterm-256color")
+
+	bar := renderClusterBar(4, 6, 18)
+
+	if bar != "[████████████░░░░░░]" {
+		t.Fatalf("expected scaled bar output, got %q", bar)
+	}
+}
+
+func TestRenderClusterBar_ShouldUseASCIIWhenFallbackEnabled(t *testing.T) {
+	t.Setenv("DREAMS_ASCII_BARS", "1")
+
+	bar := renderClusterBar(4, 6, 18)
+
+	if bar != "[############------]" {
+		t.Fatalf("expected ascii fallback bar output, got %q", bar)
+	}
+}
+
+func TestRenderTopTermRankLine_ShouldRenderCompactMiniChart(t *testing.T) {
+	t.Setenv("DREAMS_ASCII_BARS", "0")
+	t.Setenv("TERM", "xterm-256color")
+
+	line := renderTopTermRankLine([]string{"water", "storm", "school"}, 5)
+
+	if !strings.Contains(line, "water ▮▮▮▮▮") {
+		t.Fatalf("expected first-ranked term bar, got %q", line)
+	}
+
+	if !strings.Contains(line, "storm ▮▮▮▮") {
+		t.Fatalf("expected second-ranked term bar, got %q", line)
+	}
+
+	if !strings.Contains(line, "school ▮▮▮") {
+		t.Fatalf("expected third-ranked term bar, got %q", line)
+	}
+}
+
+func TestRenderTopTermRankLine_ShouldUseASCIIWhenFallbackEnabled(t *testing.T) {
+	t.Setenv("DREAMS_ASCII_BARS", "1")
+
+	line := renderTopTermRankLine([]string{"water", "storm", "school"}, 5)
+
+	if !strings.Contains(line, "water |||||") {
+		t.Fatalf("expected ascii first-ranked term bar, got %q", line)
+	}
+
+	if !strings.Contains(line, "storm ||||") {
+		t.Fatalf("expected ascii second-ranked term bar, got %q", line)
+	}
+
+	if !strings.Contains(line, "school |||") {
+		t.Fatalf("expected ascii third-ranked term bar, got %q", line)
+	}
+}
+
+func TestModelView_ShouldRenderClusterDistributionBar(t *testing.T) {
+	m := NewModel(&analysisTestRepo{})
+	m.state = analysisView
+	m.analysis = &model.Analysis{
+		ID:           2,
+		AnalysisDate: time.Date(2025, 1, 10, 12, 0, 0, 0, time.UTC),
+		DreamCount:   6,
+		NClusters:    2,
+	}
+	m.analysisClusters = []model.Cluster{{
+		ClusterID:  0,
+		DreamCount: 4,
+		TopTerms:   []string{"water", "storm"},
+	}}
+
+	view := m.View()
+
+	if !strings.Contains(view, "Cluster distribution:") {
+		t.Fatalf("expected cluster distribution label, got %q", view)
+	}
+
+	if !strings.Contains(view, "(67%)") {
+		t.Fatalf("expected cluster share percentage, got %q", view)
+	}
+
+	if !strings.Contains(view, "term ranks:") {
+		t.Fatalf("expected compact top-term mini-chart, got %q", view)
+	}
+}
+
+func TestModelView_ShouldShowASCIIFallbackNoticeWhenEnabled(t *testing.T) {
+	t.Setenv("DREAMS_ASCII_BARS", "1")
+
+	m := NewModel(&analysisTestRepo{})
+	m.state = analysisView
+	m.analysis = &model.Analysis{
+		ID:           3,
+		AnalysisDate: time.Date(2025, 1, 10, 12, 0, 0, 0, time.UTC),
+		DreamCount:   6,
+		NClusters:    2,
+	}
+	m.analysisClusters = []model.Cluster{{
+		ClusterID:  0,
+		DreamCount: 4,
+		TopTerms:   []string{"water", "storm"},
+	}}
+
+	view := m.View()
+
+	if !strings.Contains(view, "Display mode: ASCII fallback") {
+		t.Fatalf("expected ascii display mode notice, got %q", view)
+	}
+}
+
 func TestModelUpdate_ShouldExposeSaveFailureAndKeepPreviousCache(t *testing.T) {
 	repo := &analysisTestRepo{
 		listDreamsResult: makeDreams(6),

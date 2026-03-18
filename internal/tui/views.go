@@ -2,11 +2,24 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	clusterBarPalette = []lipgloss.Color{
+		lipgloss.Color("#8BE9FD"),
+		lipgloss.Color("#50FA7B"),
+		lipgloss.Color("#FFB86C"),
+		lipgloss.Color("#FF79C6"),
+		lipgloss.Color("#BD93F9"),
+	}
+
+	clusterBarEmptyStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#44475A"))
 )
 
 func (m Model) View() string {
@@ -243,10 +256,26 @@ func (m Model) analysisView() string {
 			b.WriteString("\n")
 			b.WriteString(itemStyle.MarginLeft(2).Render(fmt.Sprintf("Clusters: %d", m.analysis.NClusters)))
 
+			if len(m.analysisClusters) > 0 {
+				b.WriteString("\n")
+				b.WriteString(itemStyle.MarginLeft(2).Render("Cluster distribution:"))
+
+				displayMode := analysisDisplayModeNotice()
+				if displayMode != "" {
+					b.WriteString("\n")
+					b.WriteString(subtitleStyle.MarginLeft(2).Render(displayMode))
+				}
+			}
+
+			barWidth := clusterBarWidth(m.width)
 			for _, cluster := range m.analysisClusters {
 				b.WriteString("\n")
-				line := fmt.Sprintf("Cluster %d (%d dreams): %s", cluster.ClusterID, cluster.DreamCount, strings.Join(cluster.TopTerms, ", "))
+				line := renderClusterSummary(cluster.ClusterID, cluster.DreamCount, m.analysis.DreamCount, barWidth)
 				b.WriteString(itemStyle.MarginLeft(2).Render(line))
+
+				rankLine := renderTopTermRankLine(cluster.TopTerms, 5)
+				b.WriteString("\n")
+				b.WriteString(itemStyle.MarginLeft(2).Render(wrapText(rankLine, m.width-8)))
 			}
 		} else if m.analysisLoadErr == nil {
 			b.WriteString(itemStyle.MarginLeft(2).Render("No cached analysis yet."))
@@ -310,6 +339,167 @@ func analysisErrorTitle(err error) string {
 	default:
 		return "Analysis unavailable."
 	}
+}
+
+func renderClusterSummary(clusterID, clusterDreamCount, totalDreams int64, barWidth int) string {
+	sharePct := clusterSharePercent(clusterDreamCount, totalDreams)
+	bar := renderStyledClusterBar(clusterID, clusterDreamCount, totalDreams, barWidth)
+	return fmt.Sprintf("Cluster %d %s %d dreams (%d%%)", clusterID, bar, clusterDreamCount, sharePct)
+}
+
+func renderTopTermRankLine(topTerms []string, maxTerms int) string {
+	if len(topTerms) == 0 || maxTerms <= 0 {
+		return "  term ranks: (none)"
+	}
+
+	displayTerms := maxTerms
+	if len(topTerms) < displayTerms {
+		displayTerms = len(topTerms)
+	}
+
+	parts := make([]string, 0, displayTerms)
+	for i := 0; i < displayTerms; i++ {
+		rankWeight := maxTerms - i
+		if rankWeight < 1 {
+			rankWeight = 1
+		}
+
+		parts = append(parts, fmt.Sprintf("%s %s", topTerms[i], strings.Repeat(rankBarGlyph(), rankWeight)))
+	}
+
+	return "  term ranks: " + strings.Join(parts, " • ")
+}
+
+func clusterSharePercent(clusterDreamCount, totalDreams int64) int64 {
+	if totalDreams <= 0 {
+		return 0
+	}
+
+	return (clusterDreamCount*100 + totalDreams/2) / totalDreams
+}
+
+func clusterBarWidth(viewWidth int) int {
+	if viewWidth <= 0 {
+		return 18
+	}
+
+	width := viewWidth / 3
+	if width < 10 {
+		return 10
+	}
+	if width > 24 {
+		return 24
+	}
+
+	return width
+}
+
+func renderClusterBar(clusterDreamCount, totalDreams int64, width int) string {
+	filled, empty := clusterBarSegments(clusterDreamCount, totalDreams, width)
+	if filled == 0 && empty == 0 {
+		return "[]"
+	}
+
+	return "[" + strings.Repeat(clusterFillGlyph(), filled) + strings.Repeat(clusterEmptyGlyph(), empty) + "]"
+}
+
+func renderStyledClusterBar(clusterID, clusterDreamCount, totalDreams int64, width int) string {
+	filled, empty := clusterBarSegments(clusterDreamCount, totalDreams, width)
+	if filled == 0 && empty == 0 {
+		return "[]"
+	}
+
+	fillStyle := clusterBarFillStyle(clusterID)
+	filledBar := fillStyle.Render(strings.Repeat(clusterFillGlyph(), filled))
+	emptyBar := clusterBarEmptyStyle.Render(strings.Repeat(clusterEmptyGlyph(), empty))
+	return "[" + filledBar + emptyBar + "]"
+}
+
+func clusterBarSegments(clusterDreamCount, totalDreams int64, width int) (int, int) {
+	if width <= 0 {
+		return 0, 0
+	}
+
+	if totalDreams <= 0 {
+		return 0, width
+	}
+
+	filled := int((clusterDreamCount*int64(width) + totalDreams/2) / totalDreams)
+	if filled < 0 {
+		filled = 0
+	}
+	if filled > width {
+		filled = width
+	}
+	empty := width - filled
+	if empty < 0 {
+		empty = 0
+	}
+
+	return filled, empty
+}
+
+func clusterBarFillStyle(clusterID int64) lipgloss.Style {
+	if len(clusterBarPalette) == 0 {
+		return itemStyle
+	}
+
+	idx := int(clusterID % int64(len(clusterBarPalette)))
+	if idx < 0 {
+		idx += len(clusterBarPalette)
+	}
+
+	return lipgloss.NewStyle().Foreground(clusterBarPalette[idx]).Bold(true)
+}
+
+func shouldUseASCIIBars() bool {
+	if isTruthySetting(os.Getenv("DREAMS_ASCII_BARS")) {
+		return true
+	}
+
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("TERM")), "dumb")
+}
+
+func isTruthySetting(value string) bool {
+	trimmed := strings.ToLower(strings.TrimSpace(value))
+	switch trimmed {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+func clusterFillGlyph() string {
+	if shouldUseASCIIBars() {
+		return "#"
+	}
+
+	return "█"
+}
+
+func clusterEmptyGlyph() string {
+	if shouldUseASCIIBars() {
+		return "-"
+	}
+
+	return "░"
+}
+
+func rankBarGlyph() string {
+	if shouldUseASCIIBars() {
+		return "|"
+	}
+
+	return "▮"
+}
+
+func analysisDisplayModeNotice() string {
+	if shouldUseASCIIBars() {
+		return "Display mode: ASCII fallback"
+	}
+
+	return ""
 }
 
 func (m Model) errorView() string {
