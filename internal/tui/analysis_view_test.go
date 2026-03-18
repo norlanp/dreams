@@ -442,6 +442,52 @@ func TestModelUpdate_ShouldExposeRunnerFailureInAnalysisState(t *testing.T) {
 	}
 }
 
+func TestDefaultAnalysisRunner_ShouldUseAnalysisProjectDependencies(t *testing.T) {
+	tmpDir := t.TempDir()
+	uvPath := filepath.Join(tmpDir, "uv")
+	uvScript := `#!/bin/sh
+project_ok=0
+while [ "$#" -gt 0 ]; do
+	if [ "$1" = "--project" ]; then
+		shift
+		if [ "$1" = "internal/analysis" ]; then
+			project_ok=1
+		fi
+		break
+	fi
+	shift
+done
+
+if [ "$project_ok" -ne 1 ]; then
+	echo "missing --project internal/analysis" >&2
+	exit 2
+fi
+
+printf '{"dream_count":5,"n_clusters":1,"clusters":[]}'
+`
+
+	if err := os.WriteFile(uvPath, []byte(uvScript), 0o755); err != nil {
+		t.Fatalf("failed to create fake uv binary: %v", err)
+	}
+
+	oldPath := os.Getenv("PATH")
+	if err := os.Setenv("PATH", tmpDir+":"+oldPath); err != nil {
+		t.Fatalf("failed to set PATH: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Setenv("PATH", oldPath)
+	})
+
+	output, err := defaultAnalysisRunner(5)
+	if err != nil {
+		t.Fatalf("expected runner to include analysis project dependencies, got %v", err)
+	}
+
+	if !strings.Contains(string(output), `"dream_count":5`) {
+		t.Fatalf("expected JSON pipeline output, got %q", output)
+	}
+}
+
 func TestModelUpdate_ShouldExposeRunnerTimeoutInAnalysisState(t *testing.T) {
 	repo := &analysisTestRepo{listDreamsResult: makeDreams(6)}
 

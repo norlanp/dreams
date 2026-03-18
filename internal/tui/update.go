@@ -148,6 +148,8 @@ func defaultAnalysisRunner(minDreams int) ([]byte, error) {
 		ctx,
 		"uv",
 		"run",
+		"--project",
+		"internal/analysis",
 		"python",
 		"internal/analysis/scripts/extract_dreamsigns.py",
 		"--db-path",
