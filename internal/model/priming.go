@@ -16,3 +16,14 @@ type PrimingLog struct {
 	Detail    string
 	Content   string
 }
+
+type PrimingContent struct {
+	ID        int64
+	Source    string
+	Title     string
+	Content   string
+	Category  string
+	URL       string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}

@@ -43,6 +43,17 @@ type PrimingCache struct {
 	UpdatedAt   sql.NullTime `json:"updated_at"`
 }
 
+type PrimingContent struct {
+	ID        int64          `json:"id"`
+	Source    string         `json:"source"`
+	Title     string         `json:"title"`
+	Content   string         `json:"content"`
+	Category  sql.NullString `json:"category"`
+	Url       sql.NullString `json:"url"`
+	CreatedAt sql.NullTime   `json:"created_at"`
+	UpdatedAt sql.NullTime   `json:"updated_at"`
+}
+
 type PrimingLog struct {
 	ID        int64     `json:"id"`
 	CreatedAt time.Time `json:"created_at"`

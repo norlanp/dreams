@@ -15,10 +15,14 @@ type analysisStore interface {
 
 type PersonalizedSource struct {
 	store analysisStore
+	index int
 }
 
 func NewPersonalizedSource(store analysisStore) *PersonalizedSource {
-	return &PersonalizedSource{store: store}
+	return &PersonalizedSource{
+		store: store,
+		index: 0,
+	}
 }
 
 func (s *PersonalizedSource) Label() SourceLabel {
@@ -26,7 +30,7 @@ func (s *PersonalizedSource) Label() SourceLabel {
 }
 
 func (s *PersonalizedSource) Next(ctx context.Context) (string, error) {
-	terms, err := latestDreamSigns(ctx, s.store, 3)
+	terms, err := latestDreamSigns(ctx, s.store, 5)
 	if err != nil {
 		return "", err
 	}
@@ -35,11 +39,43 @@ func (s *PersonalizedSource) Next(ctx context.Context) (string, error) {
 		return "", errSourceUnavailable
 	}
 
-	content := fmt.Sprintf(
-		"Tonight, when you notice %s, pause and ask: 'Am I dreaming?' Repeat this cue three times before sleep.",
-		strings.Join(terms, ", "),
-	)
+	content := s.formatWithRotation(terms)
+	s.index++
 	return content, nil
+}
+
+func (s *PersonalizedSource) formatWithRotation(terms []string) string {
+	templates := []string{
+		"Tonight, when you notice %s, pause and ask: 'Am I dreaming?' Repeat this cue three times before sleep.",
+		"As you drift off, keep %s in mind. When you encounter them in dreams, recognize the signal and become lucid.",
+		"Your dream signs: %s. Set an intention to notice these tonight and question your reality when they appear.",
+		"Tonight's focus: %s. When these appear in your dreams, use them as triggers to remember you're dreaming.",
+		"Before sleep, visualize %s. Practice the habit of questioning reality whenever you encounter them in waking life.",
+	}
+
+	templateIdx := s.index % len(templates)
+	selectedTerms := s.selectTermsForRotation(terms)
+
+	return fmt.Sprintf(templates[templateIdx], strings.Join(selectedTerms, ", "))
+}
+
+// selectTermsForRotation implements a sliding window rotation across available terms.
+// When there are more than 3 terms, it cycles through different 3-term combinations
+// to provide variety across successive calls.
+func (s *PersonalizedSource) selectTermsForRotation(terms []string) []string {
+	if len(terms) <= 3 {
+		return terms
+	}
+
+	// Use modulo to cycle through starting positions, ensuring we always have
+	// 3 consecutive terms. The window size (len - 2) ensures we don't overflow.
+	startIdx := s.index % (len(terms) - 2)
+	endIdx := startIdx + 3
+	if endIdx > len(terms) {
+		endIdx = len(terms)
+	}
+
+	return terms[startIdx:endIdx]
 }
 
 func latestDreamSigns(ctx context.Context, store analysisStore, limit int) ([]string, error) {
@@ -65,7 +101,7 @@ func latestDreamSigns(ctx context.Context, store analysisStore, limit int) ([]st
 
 func collectTopTerms(clusters []model.Cluster, limit int) []string {
 	if limit <= 0 {
-		return nil
+		return []string{}
 	}
 
 	seen := map[string]struct{}{}

@@ -27,6 +27,8 @@ type repo interface {
 	GetFreshPrimingCache(ctx context.Context, source string, now time.Time, ttl time.Duration) (*model.PrimingCache, error)
 	SavePrimingCache(ctx context.Context, source string, payload []string, fetchedAt time.Time) error
 	SavePrimingLog(ctx context.Context, source, outcome, detail, content string, createdAt time.Time) error
+	ListPrimingContent(ctx context.Context) ([]model.PrimingContent, error)
+	GetPrimingContentByCategory(ctx context.Context, category string) ([]model.PrimingContent, error)
 }
 
 type viewState int

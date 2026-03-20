@@ -49,6 +49,10 @@ func run() error {
 	}
 	defer repo.Close()
 
+	if err := repo.SeedPrimingContent(context.Background()); err != nil {
+		log.Printf("warning: failed to seed priming content: %v", err)
+	}
+
 	if exportDir != "" {
 		dreams, err := repo.ListDreams(context.Background())
 		if err != nil {

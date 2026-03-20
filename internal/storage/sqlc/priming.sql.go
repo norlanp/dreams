@@ -11,6 +11,26 @@ import (
 	"time"
 )
 
+const countPrimingContent = `-- name: CountPrimingContent :one
+SELECT COUNT(*) FROM priming_content
+`
+
+func (q *Queries) CountPrimingContent(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countPrimingContent)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const deletePrimingContent = `-- name: DeletePrimingContent :exec
+DELETE FROM priming_content WHERE id = ?
+`
+
+func (q *Queries) DeletePrimingContent(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deletePrimingContent, id)
+	return err
+}
+
 const getPrimingCache = `-- name: GetPrimingCache :one
 SELECT id, source, payload_json, fetched_at, updated_at
 FROM priming_cache
@@ -28,6 +48,110 @@ func (q *Queries) GetPrimingCache(ctx context.Context, source string) (PrimingCa
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getPrimingContentByCategory = `-- name: GetPrimingContentByCategory :many
+SELECT id, source, title, content, category, url, created_at, updated_at
+FROM priming_content
+WHERE category = ?
+`
+
+func (q *Queries) GetPrimingContentByCategory(ctx context.Context, category sql.NullString) ([]PrimingContent, error) {
+	rows, err := q.db.QueryContext(ctx, getPrimingContentByCategory, category)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PrimingContent{}
+	for rows.Next() {
+		var i PrimingContent
+		if err := rows.Scan(
+			&i.ID,
+			&i.Source,
+			&i.Title,
+			&i.Content,
+			&i.Category,
+			&i.Url,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPrimingContentBySource = `-- name: GetPrimingContentBySource :many
+SELECT id, source, title, content, category, url, created_at, updated_at
+FROM priming_content
+WHERE source = ?
+`
+
+func (q *Queries) GetPrimingContentBySource(ctx context.Context, source string) ([]PrimingContent, error) {
+	rows, err := q.db.QueryContext(ctx, getPrimingContentBySource, source)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PrimingContent{}
+	for rows.Next() {
+		var i PrimingContent
+		if err := rows.Scan(
+			&i.ID,
+			&i.Source,
+			&i.Title,
+			&i.Content,
+			&i.Category,
+			&i.Url,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const insertPrimingContent = `-- name: InsertPrimingContent :exec
+INSERT INTO priming_content (source, title, content, category, url, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertPrimingContentParams struct {
+	Source    string         `json:"source"`
+	Title     string         `json:"title"`
+	Content   string         `json:"content"`
+	Category  sql.NullString `json:"category"`
+	Url       sql.NullString `json:"url"`
+	CreatedAt sql.NullTime   `json:"created_at"`
+	UpdatedAt sql.NullTime   `json:"updated_at"`
+}
+
+func (q *Queries) InsertPrimingContent(ctx context.Context, arg InsertPrimingContentParams) error {
+	_, err := q.db.ExecContext(ctx, insertPrimingContent,
+		arg.Source,
+		arg.Title,
+		arg.Content,
+		arg.Category,
+		arg.Url,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
 }
 
 const insertPrimingLog = `-- name: InsertPrimingLog :exec
@@ -52,6 +176,44 @@ func (q *Queries) InsertPrimingLog(ctx context.Context, arg InsertPrimingLogPara
 		arg.Content,
 	)
 	return err
+}
+
+const listPrimingContent = `-- name: ListPrimingContent :many
+SELECT id, source, title, content, category, url, created_at, updated_at
+FROM priming_content
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListPrimingContent(ctx context.Context) ([]PrimingContent, error) {
+	rows, err := q.db.QueryContext(ctx, listPrimingContent)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PrimingContent{}
+	for rows.Next() {
+		var i PrimingContent
+		if err := rows.Scan(
+			&i.ID,
+			&i.Source,
+			&i.Title,
+			&i.Content,
+			&i.Category,
+			&i.Url,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPrimingLogs = `-- name: ListPrimingLogs :many

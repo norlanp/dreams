@@ -144,6 +144,38 @@ func TestPersonalizedSource_ShouldUseLatestClusterTerms(t *testing.T) {
 	}
 }
 
+func TestPersonalizedSource_ShouldRotateContentOnSuccessiveCalls(t *testing.T) {
+	store := &analysisStub{
+		analysis: &model.Analysis{ID: 7},
+		clusters: []model.Cluster{{TopTerms: []string{"mirror", "stairs", "flight", "ocean", "teeth"}}},
+	}
+
+	source := NewPersonalizedSource(store)
+
+	text1, err := source.Next(context.Background())
+	if err != nil {
+		t.Fatalf("expected first call to succeed: %v", err)
+	}
+
+	text2, err := source.Next(context.Background())
+	if err != nil {
+		t.Fatalf("expected second call to succeed: %v", err)
+	}
+
+	if text1 == text2 {
+		t.Fatalf("expected different content on successive calls, got same: %q", text1)
+	}
+
+	text3, err := source.Next(context.Background())
+	if err != nil {
+		t.Fatalf("expected third call to succeed: %v", err)
+	}
+
+	if text1 == text3 || text2 == text3 {
+		t.Fatalf("expected different content on third call")
+	}
+}
+
 func TestGenerator_ShouldReturnTerminalErrorWhenAllSourcesFail(t *testing.T) {
 	generator := NewGenerator(
 		nil,

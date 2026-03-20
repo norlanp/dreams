@@ -19,3 +19,28 @@ VALUES (?, ?, ?, ?, ?);
 SELECT id, created_at, source, outcome, detail, content
 FROM priming_logs
 ORDER BY created_at DESC;
+
+-- name: InsertPrimingContent :exec
+INSERT INTO priming_content (source, title, content, category, url, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+-- name: ListPrimingContent :many
+SELECT id, source, title, content, category, url, created_at, updated_at
+FROM priming_content
+ORDER BY created_at DESC;
+
+-- name: GetPrimingContentBySource :many
+SELECT id, source, title, content, category, url, created_at, updated_at
+FROM priming_content
+WHERE source = ?;
+
+-- name: GetPrimingContentByCategory :many
+SELECT id, source, title, content, category, url, created_at, updated_at
+FROM priming_content
+WHERE category = ?;
+
+-- name: DeletePrimingContent :exec
+DELETE FROM priming_content WHERE id = ?;
+
+-- name: CountPrimingContent :one
+SELECT COUNT(*) FROM priming_content;
