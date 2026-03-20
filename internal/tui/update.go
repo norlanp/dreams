@@ -981,7 +981,7 @@ func (m Model) handleAnalysisKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q":
 		m.state = listView
-		return m, nil
+		return m, loadDreams(m.repo)
 	case "ctrl+c":
 		return m, tea.Quit
 	case "r":
