@@ -138,6 +138,14 @@ func (r *analysisTestRepo) SavePrimingLog(ctx context.Context, source, outcome, 
 	return nil
 }
 
+func (r *analysisTestRepo) ListPrimingContent(ctx context.Context) ([]model.PrimingContent, error) {
+	return nil, nil
+}
+
+func (r *analysisTestRepo) GetPrimingContentByCategory(ctx context.Context, category string) ([]model.PrimingContent, error) {
+	return nil, nil
+}
+
 func TestModelUpdate_ShouldRenderRepoCachedAnalysisOnFirstAnalysisViewRender(t *testing.T) {
 	repo := &analysisTestRepo{
 		latestAnalysis: &model.Analysis{
