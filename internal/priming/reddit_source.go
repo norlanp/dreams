@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"dreams/internal/model"
@@ -18,6 +19,7 @@ import (
 const (
 	redditURL         = "https://old.reddit.com/r/LucidDreaming/comments/73ih3x/start_here_beginner_guides_faqs_and_resources/.json"
 	redditFallbackURL = "https://www.reddit.com/r/LucidDreaming/comments/73ih3x/start_here_beginner_guides_faqs_and_resources/.json"
+	maxResponseSize   = 10 * 1024 * 1024 // 10MB limit
 )
 
 var markdownLinkPattern = regexp.MustCompile(`\[([^\]]+)\]\((https?://[^)\s]+)\)`)
@@ -39,14 +41,16 @@ type RedditSource struct {
 	httpClient *http.Client
 	store      cacheStore
 	nowFn      func() time.Time
-	index      int
+	index      atomic.Int64
 }
 
 func NewRedditSource(client *http.Client, store cacheStore) *RedditSource {
 	if client == nil {
 		client = http.DefaultClient
 	}
-	return &RedditSource{httpClient: client, store: store, nowFn: func() time.Time { return time.Now().UTC() }}
+	rs := &RedditSource{httpClient: client, store: store, nowFn: func() time.Time { return time.Now().UTC() }}
+	rs.index.Store(0)
+	return rs
 }
 
 func (s *RedditSource) Label() SourceLabel {
@@ -62,8 +66,8 @@ func (s *RedditSource) Next(ctx context.Context) (string, error) {
 		return "", errSourceUnavailable
 	}
 
-	content := items[s.index%len(items)]
-	s.index++
+	idx := int(s.index.Add(1)-1) % len(items)
+	content := items[idx]
 	return content, nil
 }
 
@@ -135,7 +139,7 @@ func (s *RedditSource) fetchRedditFromURL(ctx context.Context, url string) ([]st
 		return nil, redditStatusError{statusCode: resp.StatusCode}
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read reddit response: %w", err)
 	}

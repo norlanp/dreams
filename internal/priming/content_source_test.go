@@ -9,10 +9,12 @@ import (
 )
 
 type mockContentStore struct {
-	content  []model.PrimingContent
-	dreams   []model.Dream
-	listErr  error
-	getByCat error
+	content     []model.PrimingContent
+	dreams      []model.Dream
+	randomDream *model.Dream
+	listErr     error
+	getByCat    error
+	randomErr   error
 }
 
 func (m *mockContentStore) ListPrimingContent(ctx context.Context) ([]model.PrimingContent, error) {
@@ -23,8 +25,14 @@ func (m *mockContentStore) GetPrimingContentByCategory(ctx context.Context, cate
 	return m.content, m.getByCat
 }
 
-func (m *mockContentStore) ListDreams(ctx context.Context) ([]model.Dream, error) {
-	return m.dreams, nil
+func (m *mockContentStore) GetRandomDream(ctx context.Context) (*model.Dream, error) {
+	if m.randomDream != nil {
+		return m.randomDream, m.randomErr
+	}
+	if len(m.dreams) > 0 {
+		return &m.dreams[0], m.randomErr
+	}
+	return nil, m.randomErr
 }
 
 func TestContentSource_Next_ShouldReturnContent(t *testing.T) {

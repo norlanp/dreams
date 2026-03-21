@@ -27,3 +27,12 @@ SELECT id, content, created_at, updated_at
 FROM dreams
 WHERE content LIKE '%' || ? || '%'
 ORDER BY created_at ASC;
+
+-- name: CountDreams :one
+SELECT COUNT(*) FROM dreams;
+
+-- name: GetRandomDream :one
+SELECT id, content, created_at, updated_at
+FROM dreams
+ORDER BY RANDOM()
+LIMIT 1;

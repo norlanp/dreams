@@ -42,6 +42,10 @@ func (r *analysisTestRepo) GetDream(ctx context.Context, id int64) (*model.Dream
 	return nil, nil
 }
 
+func (r *analysisTestRepo) GetRandomDream(ctx context.Context) (*model.Dream, error) {
+	return nil, nil
+}
+
 func (r *analysisTestRepo) UpdateDream(ctx context.Context, id int64, content string) (*model.Dream, error) {
 	return nil, nil
 }
@@ -117,7 +121,15 @@ func (r *analysisTestRepo) SaveAnalysisWithClusters(ctx context.Context, analysi
 
 	r.analysisClusters = nil
 	for _, cluster := range clusters {
-		_, err := r.SaveCluster(ctx, analysis.ID, cluster.ClusterID, cluster.DreamCount, cluster.TopTermsJSON(), cluster.DreamIDsJSON())
+		termsJSON, err := cluster.TopTermsJSON()
+		if err != nil {
+			return nil, err
+		}
+		dreamIDsJSON, err := cluster.DreamIDsJSON()
+		if err != nil {
+			return nil, err
+		}
+		_, err = r.SaveCluster(ctx, analysis.ID, cluster.ClusterID, cluster.DreamCount, termsJSON, dreamIDsJSON)
 		if err != nil {
 			return nil, err
 		}
@@ -161,7 +173,7 @@ func TestModelUpdate_ShouldRenderRepoCachedAnalysisOnFirstAnalysisViewRender(t *
 		}},
 	}
 
-	m := NewModel(repo)
+	m := NewModel(repo, "test.db")
 	updatedModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
 	updated := updatedModel.(Model)
 	view := updated.View()
@@ -184,7 +196,7 @@ func TestModelUpdate_ShouldRenderRepoCachedAnalysisOnFirstAnalysisViewRender(t *
 }
 
 func TestModelUpdate_ShouldShowEmptyFallbackWhenNoCachedAnalysis(t *testing.T) {
-	m := NewModel(&analysisTestRepo{})
+	m := NewModel(&analysisTestRepo{}, "test.db")
 	updatedModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
 	view := updatedModel.(Model).View()
 
@@ -194,7 +206,7 @@ func TestModelUpdate_ShouldShowEmptyFallbackWhenNoCachedAnalysis(t *testing.T) {
 }
 
 func TestModelUpdate_ShouldRenderCachedAnalysisImmediatelyOnAnalysisViewEntry(t *testing.T) {
-	m := NewModel(&analysisTestRepo{})
+	m := NewModel(&analysisTestRepo{}, "test.db")
 	m.analysis = &model.Analysis{
 		ID:           2,
 		AnalysisDate: time.Date(2025, 1, 10, 12, 0, 0, 0, time.UTC),
@@ -222,7 +234,7 @@ func TestModelUpdate_ShouldRenderCachedAnalysisImmediatelyOnAnalysisViewEntry(t 
 func TestModelUpdate_ShouldPreserveExistingCacheWhenEntryFetchFails(t *testing.T) {
 	repo := &analysisTestRepo{latestErr: fmt.Errorf("sqlite busy")}
 
-	m := NewModel(repo)
+	m := NewModel(repo, "test.db")
 	m.analysis = &model.Analysis{
 		ID:           88,
 		AnalysisDate: time.Date(2025, 1, 12, 16, 0, 0, 0, time.UTC),
@@ -285,7 +297,7 @@ func TestModelUpdate_ShouldStartAsyncRerunOnRFromAnalysisView(t *testing.T) {
 	repo := &analysisTestRepo{listDreamsResult: makeDreams(5)}
 	runnerCalls := 0
 
-	m := NewModel(repo)
+	m := NewModel(repo, "test.db")
 	m.state = analysisView
 	m.analysisRunner = func(minDreams int) ([]byte, error) {
 		runnerCalls++
@@ -317,7 +329,7 @@ func TestModelUpdate_ShouldGuardMinimumDreamThresholdBeforeRunningPython(t *test
 	repo := &analysisTestRepo{listDreamsResult: makeDreams(4)}
 	runnerCalls := 0
 
-	m := NewModel(repo)
+	m := NewModel(repo, "test.db")
 	m.state = analysisView
 	m.analysisRunner = func(minDreams int) ([]byte, error) {
 		runnerCalls++
@@ -356,7 +368,7 @@ func TestModelUpdate_ShouldGuardMinimumDreamThresholdBeforeRunningPython(t *test
 func TestModelUpdate_ShouldPersistAndRefreshAnalysisAfterSuccessfulRerun(t *testing.T) {
 	repo := &analysisTestRepo{listDreamsResult: makeDreams(6)}
 
-	m := NewModel(repo)
+	m := NewModel(repo, "test.db")
 	m.state = analysisView
 	m.analysisRunner = func(minDreams int) ([]byte, error) {
 		return []byte(`{
@@ -406,7 +418,7 @@ func TestModelUpdate_ShouldPersistAndRefreshAnalysisAfterSuccessfulRerun(t *test
 func TestModelUpdate_ShouldExposeRunnerFailureInAnalysisState(t *testing.T) {
 	repo := &analysisTestRepo{listDreamsResult: makeDreams(6)}
 
-	m := NewModel(repo)
+	m := NewModel(repo, "test.db")
 	m.state = analysisView
 	m.analysis = &model.Analysis{
 		ID:           41,
@@ -486,7 +498,7 @@ printf '{"dream_count":5,"n_clusters":1,"clusters":[]}'
 		_ = os.Setenv("PATH", oldPath)
 	})
 
-	output, err := defaultAnalysisRunner(5)
+	output, err := runAnalysis("test.db", 5)
 	if err != nil {
 		t.Fatalf("expected runner to include analysis project dependencies, got %v", err)
 	}
@@ -520,7 +532,7 @@ func TestModelUpdate_ShouldExposeRunnerTimeoutInAnalysisState(t *testing.T) {
 		analysisRunnerTimeout = oldRunnerTimeout
 	})
 
-	m := NewModel(repo)
+	m := NewModel(repo, "test.db")
 	m.state = analysisView
 
 	updatedModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
@@ -540,7 +552,7 @@ func TestModelUpdate_ShouldExposeRunnerTimeoutInAnalysisState(t *testing.T) {
 func TestModelUpdate_ShouldExposeParseFailureInAnalysisState(t *testing.T) {
 	repo := &analysisTestRepo{listDreamsResult: makeDreams(6)}
 
-	m := NewModel(repo)
+	m := NewModel(repo, "test.db")
 	m.state = analysisView
 	m.analysis = &model.Analysis{
 		ID:           55,
@@ -585,7 +597,7 @@ func TestModelUpdate_ShouldExposeParseFailureInAnalysisState(t *testing.T) {
 }
 
 func TestModelView_ShouldRenderLoadingStateInAnalysisView(t *testing.T) {
-	m := NewModel(&analysisTestRepo{})
+	m := NewModel(&analysisTestRepo{}, "test.db")
 	m.state = analysisView
 	m.analysisLoading = true
 
@@ -655,7 +667,7 @@ func TestRenderTopTermRankLine_ShouldUseASCIIWhenFallbackEnabled(t *testing.T) {
 }
 
 func TestModelView_ShouldRenderClusterDistributionBar(t *testing.T) {
-	m := NewModel(&analysisTestRepo{})
+	m := NewModel(&analysisTestRepo{}, "test.db")
 	m.state = analysisView
 	m.analysis = &model.Analysis{
 		ID:           2,
@@ -687,7 +699,7 @@ func TestModelView_ShouldRenderClusterDistributionBar(t *testing.T) {
 func TestModelView_ShouldShowASCIIFallbackNoticeWhenEnabled(t *testing.T) {
 	t.Setenv("DREAMS_ASCII_BARS", "1")
 
-	m := NewModel(&analysisTestRepo{})
+	m := NewModel(&analysisTestRepo{}, "test.db")
 	m.state = analysisView
 	m.analysis = &model.Analysis{
 		ID:           3,
@@ -720,7 +732,7 @@ func TestModelUpdate_ShouldExposeSaveFailureAndKeepPreviousCache(t *testing.T) {
 		},
 	}
 
-	m := NewModel(repo)
+	m := NewModel(repo, "test.db")
 	m.state = analysisView
 	m.analysis = repo.latestAnalysis
 	m.analysisRunner = func(minDreams int) ([]byte, error) {

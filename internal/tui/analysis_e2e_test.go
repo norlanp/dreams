@@ -35,7 +35,7 @@ func TestModelUpdate_ShouldValidateStatisticsNavigationCacheAndRerunFlow(t *test
 	}
 
 	runnerCalls := 0
-	m := NewModel(repo)
+	m := NewModel(repo, "test.db")
 	m.analysisRunner = func(minDreams int) ([]byte, error) {
 		runnerCalls++
 		return []byte(`{"dream_count":6,"n_clusters":1,"clusters":[{"cluster_id":0,"dream_count":6,"top_terms":["ocean","stairs"],"dream_ids":[1,2,3,4,5,6]}]}`), nil
@@ -139,7 +139,7 @@ func TestModelUpdate_ShouldShowLocalTimezoneTimestampWhenOpeningStatistics(t *te
 		},
 	}
 
-	m := NewModel(repo)
+	m := NewModel(repo, "test.db")
 	updatedModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
 	view := updatedModel.(Model).View()
 

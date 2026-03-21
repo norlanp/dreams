@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -119,13 +120,15 @@ func (s *AISource) chatCompletion(ctx context.Context, baseURL, apiKey, model, p
 	}
 	defer resp.Body.Close()
 
-	data, err := io.ReadAll(resp.Body)
+	const maxResponseSize = 10 * 1024 * 1024 // 10MB limit
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize))
 	if err != nil {
 		return "", fmt.Errorf("failed to read AI response: %w", err)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("AI provider returned %d: %s", resp.StatusCode, strings.TrimSpace(string(data)))
+		sanitized := sanitizeAIErrorResponse(string(data))
+		return "", fmt.Errorf("AI provider returned %d: %s", resp.StatusCode, sanitized)
 	}
 
 	var parsed response
@@ -142,4 +145,22 @@ func (s *AISource) chatCompletion(ctx context.Context, baseURL, apiKey, model, p
 	}
 
 	return content, nil
+}
+
+func sanitizeAIErrorResponse(data string) string {
+	// Remove common API key patterns from error responses
+	patterns := []string{
+		`(?i)bearer\s+[a-zA-Z0-9\-_\.]+`,
+		`(?i)api[_-]?key["']?\s*[:=]\s*["']?[a-zA-Z0-9\-_\.]+`,
+		`(?i)sk-[a-zA-Z0-9]{20,}`, // OpenAI key pattern
+		`(?i)sk-[a-zA-Z0-9]{10,}`, // Generic API key pattern
+	}
+
+	result := data
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		result = re.ReplaceAllString(result, "[REDACTED]")
+	}
+
+	return strings.TrimSpace(result)
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"dreams/internal/model"
@@ -14,24 +15,25 @@ import (
 type contentStore interface {
 	ListPrimingContent(ctx context.Context) ([]model.PrimingContent, error)
 	GetPrimingContentByCategory(ctx context.Context, category string) ([]model.PrimingContent, error)
-	ListDreams(ctx context.Context) ([]model.Dream, error)
+	GetRandomDream(ctx context.Context) (*model.Dream, error)
 }
 
 // ContentSource provides community-sourced priming content with optional dream blending.
 type ContentSource struct {
 	store contentStore
-	index int
+	index atomic.Int64
 	rand  *rand.Rand
 }
 
 // NewContentSource creates a new ContentSource with the given store.
 // Uses a seeded random source for consistent behavior in tests.
 func NewContentSource(store contentStore) *ContentSource {
-	return &ContentSource{
+	cs := &ContentSource{
 		store: store,
-		index: 0,
 		rand:  rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
+	cs.index.Store(0)
+	return cs
 }
 
 func (s *ContentSource) Label() SourceLabel {
@@ -48,8 +50,8 @@ func (s *ContentSource) Next(ctx context.Context) (string, error) {
 		return "", errSourceUnavailable
 	}
 
-	item := content[s.index%len(content)]
-	s.index++
+	idx := int(s.index.Add(1)-1) % len(content)
+	item := content[idx]
 
 	return s.blendWithDreams(ctx, item)
 }
@@ -57,18 +59,17 @@ func (s *ContentSource) Next(ctx context.Context) (string, error) {
 // blendWithDreams attempts to blend community content with user's dreams.
 // If dream loading fails or no dreams exist, falls back to content-only format.
 func (s *ContentSource) blendWithDreams(ctx context.Context, item model.PrimingContent) (string, error) {
-	dreams, err := s.store.ListDreams(ctx)
+	dream, err := s.store.GetRandomDream(ctx)
 	if err != nil {
 		log.Printf(`{"event":"priming_blend","status":"dreams_fetch_failed","error":%q}`, err)
 		return s.format(item, ""), nil
 	}
 
-	if len(dreams) == 0 {
+	if dream == nil {
 		log.Printf(`{"event":"priming_blend","status":"no_dreams"}`)
 		return s.format(item, ""), nil
 	}
 
-	dream := dreams[s.rand.Intn(len(dreams))]
 	preview := dream.Content
 	if len(preview) > 200 {
 		preview = preview[:200] + "..."

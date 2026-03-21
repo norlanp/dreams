@@ -8,7 +8,7 @@ import (
 )
 
 func TestModelUpdate_ShouldEnterAnalysisViewOnSFromList(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel(nil, "test.db")
 
 	updatedModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
 	updated := updatedModel.(Model)
@@ -35,7 +35,7 @@ func TestModelUpdate_ShouldLeaveAnalysisViewOnEscAndQ(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewModel(nil)
+			m := NewModel(nil, "test.db")
 			m.state = analysisView
 
 			updatedModel, _ := m.Update(tt.msg)
@@ -49,7 +49,7 @@ func TestModelUpdate_ShouldLeaveAnalysisViewOnEscAndQ(t *testing.T) {
 }
 
 func TestModelUpdate_ShouldQuitOnCtrlCInAnalysisView(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel(nil, "test.db")
 	m.state = analysisView
 
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
@@ -63,7 +63,7 @@ func TestModelUpdate_ShouldQuitOnCtrlCInAnalysisView(t *testing.T) {
 }
 
 func TestModelView_ShouldRenderAnalysisViewWhenStateIsAnalysis(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel(nil, "test.db")
 	m.state = analysisView
 
 	view := m.View()
@@ -86,7 +86,7 @@ func TestModelUpdate_ShouldNotEnterAnalysisViewOnSFromNonListViews(t *testing.T)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewModel(nil)
+			m := NewModel(nil, "test.db")
 			m.state = tt.state
 
 			updatedModel, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})

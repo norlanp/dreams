@@ -28,7 +28,7 @@ func (s *primingGeneratorStub) Next(ctx context.Context) priming.Result {
 }
 
 func TestModelUpdate_ShouldOpenNightViewAndReturnToListWithSelectionPreserved(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel(nil, "test.db")
 	m.dreams = []model.Dream{{ID: 1, CreatedAt: time.Now()}, {ID: 2, CreatedAt: time.Now()}}
 	m.selected = 1
 	m.nightGenerator = &primingGeneratorStub{results: []priming.Result{{
@@ -63,7 +63,7 @@ func TestModelUpdate_ShouldOpenNightViewAndReturnToListWithSelectionPreserved(t 
 }
 
 func TestModelUpdate_ShouldRenderSourceLabelAndSupportNextKey(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel(nil, "test.db")
 	m.state = nightView
 	m.nightGenerator = &primingGeneratorStub{results: []priming.Result{
 		{Source: priming.SourcePersonalized, Text: "first"},
@@ -91,7 +91,7 @@ func TestModelUpdate_ShouldRenderSourceLabelAndSupportNextKey(t *testing.T) {
 }
 
 func TestModelView_ShouldRenderActionableFallbackStatusForAIConfigErrors(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel(nil, "test.db")
 	m.state = nightView
 	m.nightGenerator = &primingGeneratorStub{results: []priming.Result{{
 		Source: priming.SourceTemplate,
@@ -114,7 +114,7 @@ func TestModelView_ShouldRenderActionableFallbackStatusForAIConfigErrors(t *test
 }
 
 func TestModelUpdate_ShouldClearStaleNightContentAfterRefreshFailure(t *testing.T) {
-	m := NewModel(nil)
+	m := NewModel(nil, "test.db")
 	m.state = nightView
 	m.nightGenerator = &primingGeneratorStub{results: []priming.Result{
 		{Source: priming.SourcePersonalized, Text: "fresh content"},

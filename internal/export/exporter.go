@@ -4,17 +4,31 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
+	"strings"
 
 	"dreams/internal/model"
 )
+
+const maxDreamContentLength = 100000 // 100KB limit
 
 func ExportAll(dreams []model.Dream, directory string) (int, error) {
 	if len(dreams) == 0 {
 		return 0, nil
 	}
 
-	if err := os.MkdirAll(directory, 0755); err != nil {
+	// Path traversal protection: ensure directory is within reasonable bounds
+	absDir, err := filepath.Abs(directory)
+	if err != nil {
+		return 0, fmt.Errorf("invalid directory path: %w", err)
+	}
+
+	if containsPathTraversal(absDir) {
+		return 0, fmt.Errorf("export directory contains path traversal sequences")
+	}
+
+	directory = absDir
+
+	if err := os.MkdirAll(directory, 0700); err != nil {
 		return 0, fmt.Errorf("failed to create directory: %w", err)
 	}
 
@@ -33,7 +47,7 @@ func ExportAll(dreams []model.Dream, directory string) (int, error) {
 }
 
 func exportDream(dream model.Dream, directory string) error {
-	filename := generateFilename(dream.CreatedAt)
+	filename := generateFilename(dream)
 	filepath := filepath.Join(directory, filename)
 	content := generateContent(dream)
 
@@ -61,12 +75,21 @@ func exportDream(dream model.Dream, directory string) error {
 	return nil
 }
 
-func generateFilename(t time.Time) string {
-	return t.Format("2006-01-02-15-04-05") + "-dream.md"
+func generateFilename(dream model.Dream) string {
+	return fmt.Sprintf("%s-%d-dream.md",
+		dream.CreatedAt.Format("2006-01-02-15-04-05"),
+		dream.ID)
 }
 
 func generateContent(dream model.Dream) string {
 	return fmt.Sprintf("---\ndate: %s\n---\n\n%s",
 		dream.CreatedAt.Format("2006-01-02"),
 		dream.Content)
+}
+
+func containsPathTraversal(path string) bool {
+	// Check for common path traversal patterns
+	return strings.Contains(path, "..") || strings.Contains(path, "~") ||
+		strings.HasPrefix(path, "/etc") || strings.HasPrefix(path, "/proc") ||
+		strings.HasPrefix(path, "/sys") || strings.HasPrefix(path, "/dev")
 }

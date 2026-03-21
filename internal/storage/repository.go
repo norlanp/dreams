@@ -15,6 +15,8 @@ import (
 	"dreams/internal/storage/sqlc"
 )
 
+const maxDreamContentLength = 100000 // 100KB limit
+
 type Repository struct {
 	queries *sqlc.Queries
 	db      *sql.DB
@@ -69,6 +71,10 @@ func (r *Repository) Close() error {
 }
 
 func (r *Repository) CreateDream(ctx context.Context, content string) (*model.Dream, error) {
+	if err := validateDreamContent(content); err != nil {
+		return nil, err
+	}
+
 	now := sql.NullTime{Time: time.Now().UTC(), Valid: true}
 	params := sqlc.CreateDreamParams{
 		Content:   content,
@@ -82,6 +88,16 @@ func (r *Repository) CreateDream(ctx context.Context, content string) (*model.Dr
 	}
 
 	return toModel(d), nil
+}
+
+func validateDreamContent(content string) error {
+	if len(content) == 0 {
+		return fmt.Errorf("dream content cannot be empty")
+	}
+	if len(content) > maxDreamContentLength {
+		return fmt.Errorf("dream content exceeds maximum length of %d bytes", maxDreamContentLength)
+	}
+	return nil
 }
 
 func (r *Repository) ListDreams(ctx context.Context) ([]model.Dream, error) {
@@ -98,6 +114,25 @@ func (r *Repository) ListDreams(ctx context.Context) ([]model.Dream, error) {
 	return dreams, nil
 }
 
+func (r *Repository) CountDreams(ctx context.Context) (int64, error) {
+	count, err := r.queries.CountDreams(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count dreams: %w", err)
+	}
+	return count, nil
+}
+
+func (r *Repository) GetRandomDream(ctx context.Context) (*model.Dream, error) {
+	d, err := r.queries.GetRandomDream(ctx)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get random dream: %w", err)
+	}
+	return toModel(d), nil
+}
+
 func (r *Repository) GetDream(ctx context.Context, id int64) (*model.Dream, error) {
 	d, err := r.queries.GetDream(ctx, id)
 	if err == sql.ErrNoRows {
@@ -111,6 +146,10 @@ func (r *Repository) GetDream(ctx context.Context, id int64) (*model.Dream, erro
 }
 
 func (r *Repository) UpdateDream(ctx context.Context, id int64, content string) (*model.Dream, error) {
+	if err := validateDreamContent(content); err != nil {
+		return nil, err
+	}
+
 	params := sqlc.UpdateDreamParams{
 		ID:        id,
 		Content:   content,

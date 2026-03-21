@@ -16,6 +16,7 @@ type repo interface {
 	CreateDream(ctx context.Context, content string) (*model.Dream, error)
 	ListDreams(ctx context.Context) ([]model.Dream, error)
 	GetDream(ctx context.Context, id int64) (*model.Dream, error)
+	GetRandomDream(ctx context.Context) (*model.Dream, error)
 	UpdateDream(ctx context.Context, id int64, content string) (*model.Dream, error)
 	DeleteDream(ctx context.Context, id int64) error
 	SearchDreams(ctx context.Context, query string) ([]model.Dream, error)
@@ -50,6 +51,7 @@ type primingGenerator interface {
 
 type Model struct {
 	repo               repo
+	dbPath             string
 	analysisRunner     analysisRunner
 	analysisMinDreams  int
 	state              viewState
@@ -149,7 +151,7 @@ var (
 					Bold(true)
 )
 
-func NewModel(r repo) Model {
+func NewModel(r repo, dbPath string) Model {
 	ta := textarea.New()
 	ta.Placeholder = "Enter content..."
 	ta.SetWidth(50)
@@ -157,9 +159,14 @@ func NewModel(r repo) Model {
 	ta.ShowLineNumbers = false
 	ta.Prompt = ""
 
+	runner := func(minDreams int) ([]byte, error) {
+		return runAnalysis(dbPath, minDreams)
+	}
+
 	return Model{
 		repo:              r,
-		analysisRunner:    defaultAnalysisRunner,
+		dbPath:            dbPath,
+		analysisRunner:    runner,
 		analysisMinDreams: 5,
 		state:             listView,
 		dreams:            []model.Dream{},
@@ -173,8 +180,8 @@ func (m Model) Init() tea.Cmd {
 	return loadDreams(m.repo)
 }
 
-func Run(repo repo) error {
-	p := tea.NewProgram(NewModel(repo), tea.WithAltScreen())
+func Run(repo repo, dbPath string) error {
+	p := tea.NewProgram(NewModel(repo, dbPath), tea.WithAltScreen())
 	_, err := p.Run()
 	return err
 }

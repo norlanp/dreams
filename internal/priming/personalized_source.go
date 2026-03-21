@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"dreams/internal/model"
 )
@@ -15,14 +16,15 @@ type analysisStore interface {
 
 type PersonalizedSource struct {
 	store analysisStore
-	index int
+	index atomic.Int64
 }
 
 func NewPersonalizedSource(store analysisStore) *PersonalizedSource {
-	return &PersonalizedSource{
+	ps := &PersonalizedSource{
 		store: store,
-		index: 0,
 	}
+	ps.index.Store(0)
+	return ps
 }
 
 func (s *PersonalizedSource) Label() SourceLabel {
@@ -40,7 +42,7 @@ func (s *PersonalizedSource) Next(ctx context.Context) (string, error) {
 	}
 
 	content := s.formatWithRotation(terms)
-	s.index++
+	s.index.Add(1)
 	return content, nil
 }
 
@@ -53,7 +55,7 @@ func (s *PersonalizedSource) formatWithRotation(terms []string) string {
 		"Before sleep, visualize %s. Practice the habit of questioning reality whenever you encounter them in waking life.",
 	}
 
-	templateIdx := s.index % len(templates)
+	templateIdx := int(s.index.Load()) % len(templates)
 	selectedTerms := s.selectTermsForRotation(terms)
 
 	return fmt.Sprintf(templates[templateIdx], strings.Join(selectedTerms, ", "))
@@ -69,7 +71,7 @@ func (s *PersonalizedSource) selectTermsForRotation(terms []string) []string {
 
 	// Use modulo to cycle through starting positions, ensuring we always have
 	// 3 consecutive terms. The window size (len - 2) ensures we don't overflow.
-	startIdx := s.index % (len(terms) - 2)
+	startIdx := int(s.index.Load()) % (len(terms) - 2)
 	endIdx := startIdx + 3
 	if endIdx > len(terms) {
 		endIdx = len(terms)

@@ -10,6 +10,17 @@ import (
 	"database/sql"
 )
 
+const countDreams = `-- name: CountDreams :one
+SELECT COUNT(*) FROM dreams
+`
+
+func (q *Queries) CountDreams(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countDreams)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createDream = `-- name: CreateDream :one
 INSERT INTO dreams (content, created_at, updated_at)
 VALUES (?, ?, ?)
@@ -51,6 +62,25 @@ WHERE id = ?
 
 func (q *Queries) GetDream(ctx context.Context, id int64) (Dream, error) {
 	row := q.db.QueryRowContext(ctx, getDream, id)
+	var i Dream
+	err := row.Scan(
+		&i.ID,
+		&i.Content,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getRandomDream = `-- name: GetRandomDream :one
+SELECT id, content, created_at, updated_at
+FROM dreams
+ORDER BY RANDOM()
+LIMIT 1
+`
+
+func (q *Queries) GetRandomDream(ctx context.Context) (Dream, error) {
+	row := q.db.QueryRowContext(ctx, getRandomDream)
 	var i Dream
 	err := row.Scan(
 		&i.ID,

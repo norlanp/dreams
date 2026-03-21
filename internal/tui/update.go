@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -17,7 +18,6 @@ import (
 	"dreams/internal/export"
 	"dreams/internal/model"
 	"dreams/internal/priming"
-	"dreams/internal/storage"
 )
 
 type dreamsLoadedMsg struct {
@@ -135,14 +135,9 @@ var (
 	analysisRunnerTimeout = 30 * time.Second
 )
 
-func defaultAnalysisRunner(minDreams int) ([]byte, error) {
+func runAnalysis(dbPath string, minDreams int) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), analysisRunnerTimeout)
 	defer cancel()
-
-	dbPath, err := storage.DefaultDBPath()
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve database path: %w", err)
-	}
 
 	cmd := exec.CommandContext(
 		ctx,
@@ -367,7 +362,32 @@ func configuredEditorCommand() (string, []string) {
 		return "nvim", nil
 	}
 
+	bin := filepath.Base(parts[0])
+	if !isAllowedEditor(bin) {
+		return "nvim", nil
+	}
+
+	for _, arg := range parts[1:] {
+		if containsShellMetacharacters(arg) {
+			return "nvim", nil
+		}
+	}
+
 	return parts[0], parts[1:]
+}
+
+func isAllowedEditor(bin string) bool {
+	allowed := map[string]bool{
+		"nvim": true, "vim": true, "vi": true,
+		"nano": true, "emacs": true, "code": true,
+		"subl": true, "atom": true, "gedit": true,
+		"kate": true, "mousepad": true,
+	}
+	return allowed[bin]
+}
+
+func containsShellMetacharacters(s string) bool {
+	return strings.ContainsAny(s, ";&|$`(){}[]<>\\")
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

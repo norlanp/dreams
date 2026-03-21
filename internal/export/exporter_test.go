@@ -29,7 +29,7 @@ func TestExportAll_ShouldCreateFileWithFrontmatter(t *testing.T) {
 		t.Errorf("expected count 1, got %d", count)
 	}
 
-	filename := "2026-03-15-08-30-00-dream.md"
+	filename := "2026-03-15-08-30-00-1-dream.md"
 	path := filepath.Join(tmpDir, filename)
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -55,17 +55,17 @@ func TestExportAll_ShouldGenerateCorrectFilename(t *testing.T) {
 		{
 			name:      "morning timestamp",
 			createdAt: time.Date(2026, 3, 15, 8, 30, 0, 0, time.UTC),
-			want:      "2026-03-15-08-30-00-dream.md",
+			want:      "2026-03-15-08-30-00-1-dream.md",
 		},
 		{
 			name:      "single digit values",
 			createdAt: time.Date(2026, 1, 5, 9, 5, 5, 0, time.UTC),
-			want:      "2026-01-05-09-05-05-dream.md",
+			want:      "2026-01-05-09-05-05-1-dream.md",
 		},
 		{
 			name:      "midnight",
 			createdAt: time.Date(2026, 12, 25, 0, 0, 0, 0, time.UTC),
-			want:      "2026-12-25-00-00-00-dream.md",
+			want:      "2026-12-25-00-00-00-1-dream.md",
 		},
 	}
 
@@ -118,10 +118,10 @@ func TestExportAll_ShouldCreateDirectory(t *testing.T) {
 func TestExportAll_ShouldOverwriteExistingFiles(t *testing.T) {
 	tmpDir := t.TempDir()
 	createdAt := time.Date(2026, 3, 15, 8, 30, 0, 0, time.UTC)
-	filename := "2026-03-15-08-30-00-dream.md"
+	filename := "2026-03-15-08-30-00-1-dream.md"
 	path := filepath.Join(tmpDir, filename)
 
-	// Create an existing file
+	// Create an existing file (with ID in filename)
 	if err := os.WriteFile(path, []byte("old content"), 0644); err != nil {
 		t.Fatalf("failed to create existing file: %v", err)
 	}
@@ -204,7 +204,7 @@ Code: \` + "`" + `func main() {}\` + "`" + `
 		t.Errorf("expected count 1, got %d", count)
 	}
 
-	filename := "2026-03-15-08-30-00-dream.md"
+	filename := "2026-03-15-08-30-00-1-dream.md"
 	path := filepath.Join(tmpDir, filename)
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -255,9 +255,9 @@ func TestExportAll_ShouldExportMultipleDreams(t *testing.T) {
 	}
 
 	expectedFiles := []string{
-		"2026-03-15-08-30-00-dream.md",
-		"2026-03-14-22-15-00-dream.md",
-		"2026-03-13-06-00-00-dream.md",
+		"2026-03-15-08-30-00-1-dream.md",
+		"2026-03-14-22-15-00-2-dream.md",
+		"2026-03-13-06-00-00-3-dream.md",
 	}
 
 	for _, filename := range expectedFiles {
@@ -286,7 +286,7 @@ func TestExportAll_ShouldPreserveNewlines(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	path := filepath.Join(tmpDir, "2026-03-15-08-30-00-dream.md")
+	path := filepath.Join(tmpDir, "2026-03-15-08-30-00-1-dream.md")
 	written, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
@@ -317,7 +317,7 @@ func TestExportAll_ShouldHandleUnicode(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	path := filepath.Join(tmpDir, "2026-03-15-08-30-00-dream.md")
+	path := filepath.Join(tmpDir, "2026-03-15-08-30-00-1-dream.md")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
@@ -381,7 +381,7 @@ func TestExportAll_ShouldHandleVeryLongContent(t *testing.T) {
 		t.Errorf("expected count 1, got %d", count)
 	}
 
-	path := filepath.Join(tmpDir, "2026-03-15-08-30-00-dream.md")
+	path := filepath.Join(tmpDir, "2026-03-15-08-30-00-1-dream.md")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)
@@ -410,13 +410,13 @@ func TestExportAll_ShouldContinueOnPartialFailures(t *testing.T) {
 	}
 
 	count, err := ExportAll(dreams, tmpDir)
-	// Should export at least one (last write wins for same timestamp)
-	// or both if filesystem handles it
-	if count == 0 {
-		t.Errorf("expected at least one export, got %d", count)
+	// Should export both dreams since they have different IDs
+	if count != 2 {
+		t.Errorf("expected 2 exports, got %d", count)
 	}
-	// May or may not have error depending on filesystem behavior
-	_ = err
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 }
 
 func TestExportAll_ShouldIncludeDateInFrontmatter(t *testing.T) {
@@ -435,7 +435,7 @@ func TestExportAll_ShouldIncludeDateInFrontmatter(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	path := filepath.Join(tmpDir, "2026-12-31-23-59-59-dream.md")
+	path := filepath.Join(tmpDir, "2026-12-31-23-59-59-1-dream.md")
 	content, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("failed to read file: %v", err)

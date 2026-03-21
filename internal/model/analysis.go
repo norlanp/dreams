@@ -24,14 +24,20 @@ type Cluster struct {
 	CreatedAt  time.Time
 }
 
-func (c *Cluster) TopTermsJSON() string {
-	data, _ := json.Marshal(c.TopTerms)
-	return string(data)
+func (c *Cluster) TopTermsJSON() (string, error) {
+	data, err := json.Marshal(c.TopTerms)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
-func (c *Cluster) DreamIDsJSON() string {
-	data, _ := json.Marshal(c.DreamIDs)
-	return string(data)
+func (c *Cluster) DreamIDsJSON() (string, error) {
+	data, err := json.Marshal(c.DreamIDs)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func (c *Cluster) SetTopTermsFromJSON(data string) error {

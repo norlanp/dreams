@@ -565,8 +565,9 @@ func previewText(text string, maxLen int) string {
 	if len(firstLine) == 0 {
 		return "(empty)"
 	}
-	if len(firstLine) > maxLen {
-		return firstLine[:maxLen-3] + "..."
+	runes := []rune(firstLine)
+	if len(runes) > maxLen {
+		return string(runes[:maxLen-3]) + "..."
 	}
 	return firstLine
 }
