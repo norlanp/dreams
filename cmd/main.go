@@ -77,6 +77,15 @@ func configureLogging(path string) (*os.File, error) {
 		return nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
+	info, err := os.Stat(path)
+	if err == nil && info.Size() > 10*1024*1024 {
+		backup := path + ".old"
+		_ = os.Remove(backup)
+		if err := os.Rename(path, backup); err != nil {
+			// Rotation failed, continue with existing file
+		}
+	}
+
 	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open log file: %w", err)

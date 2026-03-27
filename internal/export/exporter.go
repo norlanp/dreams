@@ -16,14 +16,13 @@ func ExportAll(dreams []model.Dream, directory string) (int, error) {
 		return 0, nil
 	}
 
-	// Path traversal protection: ensure directory is within reasonable bounds
 	absDir, err := filepath.Abs(directory)
 	if err != nil {
 		return 0, fmt.Errorf("invalid directory path: %w", err)
 	}
 
-	if containsPathTraversal(absDir) {
-		return 0, fmt.Errorf("export directory contains path traversal sequences")
+	if !isAllowedExportPath(absDir) {
+		return 0, fmt.Errorf("export directory must be under current working directory")
 	}
 
 	directory = absDir
@@ -87,9 +86,16 @@ func generateContent(dream model.Dream) string {
 		dream.Content)
 }
 
-func containsPathTraversal(path string) bool {
-	// Check for common path traversal patterns
-	return strings.Contains(path, "..") || strings.Contains(path, "~") ||
-		strings.HasPrefix(path, "/etc") || strings.HasPrefix(path, "/proc") ||
-		strings.HasPrefix(path, "/sys") || strings.HasPrefix(path, "/dev")
+func isAllowedExportPath(path string) bool {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false
+	}
+
+	rel, err := filepath.Rel(cwd, path)
+	if err != nil {
+		return false
+	}
+
+	return !strings.HasPrefix(rel, "..")
 }

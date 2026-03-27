@@ -10,6 +10,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+const (
+	clusterBarMinWidth     = 10
+	clusterBarMaxWidth     = 24
+	clusterBarWidthDivisor = 3
+)
+
 var (
 	clusterBarPalette = []lipgloss.Color{
 		lipgloss.Color("#8BE9FD"),
@@ -380,15 +386,15 @@ func clusterSharePercent(clusterDreamCount, totalDreams int64) int64 {
 
 func clusterBarWidth(viewWidth int) int {
 	if viewWidth <= 0 {
-		return 18
+		return clusterBarMinWidth
 	}
 
-	width := viewWidth / 3
-	if width < 10 {
-		return 10
+	width := viewWidth / clusterBarWidthDivisor
+	if width < clusterBarMinWidth {
+		return clusterBarMinWidth
 	}
-	if width > 24 {
-		return 24
+	if width > clusterBarMaxWidth {
+		return clusterBarMaxWidth
 	}
 
 	return width

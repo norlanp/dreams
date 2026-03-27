@@ -393,138 +393,174 @@ func containsShellMetacharacters(s string) bool {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch m.state {
-		case listView:
-			return m.handleListKeys(msg)
-		case createView:
-			return m.handleCreateKeys(msg)
-		case detailView:
-			return m.handleDetailKeys(msg)
-		case searchView:
-			return m.handleSearchKeys(msg)
-		case analysisView:
-			return m.handleAnalysisKeys(msg)
-		case exportView:
-			return m.handleExportKeys(msg)
-		case nightView:
-			return m.handleNightKeys(msg)
-		}
-
+		return m.handleKeyMsg(msg)
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-
+		return m.handleWindowSizeMsg(msg)
 	case dreamsLoadedMsg:
-		if msg.err != nil {
-			m.error = msg.err
-		} else {
-			m.dreams = msg.dreams
-		}
-		return m, nil
-
+		return m.handleDreamsLoadedMsg(msg)
 	case dreamSavedMsg:
-		if msg.err != nil {
-			m.statusMessage = "Save failed: " + msg.err.Error()
-			return m, nil
-		}
-
-		m.editingDream = msg.dream
-		m.statusMessage = "Saved."
-
-		if msg.exitAfterSave {
-			m = m.resetCreateForm()
-			m.state = listView
-			return m, loadDreams(m.repo)
-		}
-
-		return m, nil
-
+		return m.handleDreamSavedMsg(msg)
 	case editorClosedMsg:
-		if msg.err != nil {
-			m.statusMessage = msg.err.Error()
-			return m, nil
-		}
-
-		if msg.changed {
-			m.contentInput.SetValue(msg.content)
-			m.statusMessage = "Imported editor changes."
-		} else {
-			m.statusMessage = "Editor closed without changes."
-		}
-
-		focusCmd := m.contentInput.Focus()
-		mode := cursor.CursorStatic
-		if m.contentInsertMode {
-			mode = cursor.CursorBlink
-		}
-		modeCmd := m.contentInput.Cursor.SetMode(mode)
-		return m, tea.Batch(focusCmd, modeCmd)
-
+		return m.handleEditorClosedMsg(msg)
 	case dreamDeletedMsg:
-		if msg.err != nil {
-			m.error = msg.err
-		} else {
-			m.confirmDelete = false
-			m.confirmDeleteYes = false
-			m.state = listView
-			return m, loadDreams(m.repo)
-		}
-		return m, nil
-
+		return m.handleDreamDeletedMsg(msg)
 	case dreamsSearchedMsg:
-		if msg.err != nil {
-			m.error = msg.err
-		} else {
-			m.dreams = msg.dreams
-			m.selected = 0
-			m.isSearching = false
-			m.hasSearched = true
-		}
-		return m, nil
-
+		return m.handleDreamsSearchedMsg(msg)
 	case analysisLoadedMsg:
-		m.analysisLoading = false
-		m.analysisLoadErr = msg.err
-		m.analysis = msg.analysis
-		m.analysisClusters = msg.clusters
-		return m, nil
-
+		return m.handleAnalysisLoadedMsg(msg)
 	case analysisRerunMsg:
-		m.analysisLoading = false
-		if msg.err != nil {
-			m.analysisLoadErr = msg.err
-			return m, nil
-		}
-
-		m.analysisLoadErr = nil
-		m.analysis = msg.analysis
-		m.analysisClusters = msg.clusters
-		return m, nil
-
+		return m.handleAnalysisRerunMsg(msg)
 	case exportCompletedMsg:
-		m.exportLoading = false
-		m.exportComplete = true
-		m.exportResultCount = msg.count
-		m.exportErr = msg.err
-		return m, nil
-
+		return m.handleExportCompletedMsg(msg)
 	case primingLoadedMsg:
-		m.nightLoading = false
-		m.nightStatus = msg.result.Status
-		if msg.result.Err != nil {
-			m.nightContent = ""
-			m.nightSourceLabel = string(msg.result.Source)
-			if m.nightStatus == "" {
-				m.nightStatus = msg.result.Err.Error()
-			}
-			return m, nil
-		}
+		return m.handlePrimingLoadedMsg(msg)
+	}
 
-		m.nightContent = msg.result.Text
-		m.nightSourceLabel = string(msg.result.Source)
+	return m, nil
+}
+
+func (m Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch m.state {
+	case listView:
+		return m.handleListKeys(msg)
+	case createView:
+		return m.handleCreateKeys(msg)
+	case detailView:
+		return m.handleDetailKeys(msg)
+	case searchView:
+		return m.handleSearchKeys(msg)
+	case analysisView:
+		return m.handleAnalysisKeys(msg)
+	case exportView:
+		return m.handleExportKeys(msg)
+	case nightView:
+		return m.handleNightKeys(msg)
+	}
+	return m, nil
+}
+
+func (m Model) handleWindowSizeMsg(msg tea.WindowSizeMsg) (tea.Model, tea.Cmd) {
+	m.width = msg.Width
+	m.height = msg.Height
+	return m, nil
+}
+
+func (m Model) handleDreamsLoadedMsg(msg dreamsLoadedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.error = msg.err
+	} else {
+		m.dreams = msg.dreams
+	}
+	return m, nil
+}
+
+func (m Model) handleDreamSavedMsg(msg dreamSavedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.statusMessage = "Save failed: " + msg.err.Error()
 		return m, nil
 	}
 
+	m.editingDream = msg.dream
+	m.statusMessage = "Saved."
+
+	if msg.exitAfterSave {
+		m = m.resetCreateForm()
+		m.state = listView
+		return m, loadDreams(m.repo)
+	}
+
+	return m, nil
+}
+
+func (m Model) handleEditorClosedMsg(msg editorClosedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.statusMessage = msg.err.Error()
+		return m, nil
+	}
+
+	if msg.changed {
+		m.contentInput.SetValue(msg.content)
+		m.statusMessage = "Imported editor changes."
+	} else {
+		m.statusMessage = "Editor closed without changes."
+	}
+
+	focusCmd := m.contentInput.Focus()
+	mode := cursor.CursorStatic
+	if m.contentInsertMode {
+		mode = cursor.CursorBlink
+	}
+	modeCmd := m.contentInput.Cursor.SetMode(mode)
+	return m, tea.Batch(focusCmd, modeCmd)
+}
+
+func (m Model) handleDreamDeletedMsg(msg dreamDeletedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.error = msg.err
+	} else {
+		m.confirmDelete = false
+		m.confirmDeleteYes = false
+		m.state = listView
+		return m, loadDreams(m.repo)
+	}
+	return m, nil
+}
+
+func (m Model) handleDreamsSearchedMsg(msg dreamsSearchedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.error = msg.err
+	} else {
+		m.dreams = msg.dreams
+		m.selected = 0
+		m.isSearching = false
+		m.hasSearched = true
+	}
+	return m, nil
+}
+
+func (m Model) handleAnalysisLoadedMsg(msg analysisLoadedMsg) (tea.Model, tea.Cmd) {
+	m.analysisLoading = false
+	m.analysisLoadErr = msg.err
+	m.analysis = msg.analysis
+	m.analysisClusters = msg.clusters
+	return m, nil
+}
+
+func (m Model) handleAnalysisRerunMsg(msg analysisRerunMsg) (tea.Model, tea.Cmd) {
+	m.analysisLoading = false
+	if msg.err != nil {
+		m.analysisLoadErr = msg.err
+		return m, nil
+	}
+
+	m.analysisLoadErr = nil
+	m.analysis = msg.analysis
+	m.analysisClusters = msg.clusters
+	return m, nil
+}
+
+func (m Model) handleExportCompletedMsg(msg exportCompletedMsg) (tea.Model, tea.Cmd) {
+	m.exportLoading = false
+	m.exportComplete = true
+	m.exportResultCount = msg.count
+	m.exportErr = msg.err
+	return m, nil
+}
+
+func (m Model) handlePrimingLoadedMsg(msg primingLoadedMsg) (tea.Model, tea.Cmd) {
+	m.nightLoading = false
+	m.nightStatus = msg.result.Status
+	if msg.result.Err != nil {
+		m.nightContent = ""
+		m.nightSourceLabel = string(msg.result.Source)
+		if m.nightStatus == "" {
+			m.nightStatus = msg.result.Err.Error()
+		}
+		return m, nil
+	}
+
+	m.nightContent = msg.result.Text
+	m.nightSourceLabel = string(msg.result.Source)
 	return m, nil
 }
 
