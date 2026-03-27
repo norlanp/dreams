@@ -261,6 +261,7 @@ func (m Model) analysisView() string {
 			b.WriteString(itemStyle.MarginLeft(2).Render(fmt.Sprintf("Dreams analyzed: %d", m.analysis.DreamCount)))
 			b.WriteString("\n")
 			b.WriteString(itemStyle.MarginLeft(2).Render(fmt.Sprintf("Clusters: %d", m.analysis.NClusters)))
+			b.WriteString("\n")
 
 			if len(m.analysisClusters) > 0 {
 				b.WriteString("\n")
@@ -282,13 +283,14 @@ func (m Model) analysisView() string {
 				rankLine := renderTopTermRankLine(cluster.TopTerms, 5)
 				b.WriteString("\n")
 				b.WriteString(itemStyle.MarginLeft(2).Render(wrapText(rankLine, m.width-8)))
+				b.WriteString("\n")
 			}
 		} else if m.analysisLoadErr == nil {
 			b.WriteString(itemStyle.MarginLeft(2).Render("No cached analysis yet."))
 		}
 	}
 
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 	b.WriteString(renderHelp("r: rerun analysis • esc/q: back • ctrl+c: quit", m.width))
 
 	content := b.String()
