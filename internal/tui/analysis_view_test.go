@@ -629,40 +629,27 @@ func TestRenderClusterBar_ShouldUseASCIIWhenFallbackEnabled(t *testing.T) {
 	}
 }
 
-func TestRenderTopTermRankLine_ShouldRenderCompactMiniChart(t *testing.T) {
-	t.Setenv("DREAMS_ASCII_BARS", "0")
-	t.Setenv("TERM", "xterm-256color")
-
+func TestRenderTopTermRankLine_ShouldRenderNumberedTerms(t *testing.T) {
 	line := renderTopTermRankLine([]string{"water", "storm", "school"}, 5)
 
-	if !strings.Contains(line, "water ▮▮▮▮▮") {
-		t.Fatalf("expected first-ranked term bar, got %q", line)
+	if !strings.Contains(line, "1. water") {
+		t.Fatalf("expected first-ranked term, got %q", line)
 	}
 
-	if !strings.Contains(line, "storm ▮▮▮▮") {
-		t.Fatalf("expected second-ranked term bar, got %q", line)
+	if !strings.Contains(line, "2. storm") {
+		t.Fatalf("expected second-ranked term, got %q", line)
 	}
 
-	if !strings.Contains(line, "school ▮▮▮") {
-		t.Fatalf("expected third-ranked term bar, got %q", line)
+	if !strings.Contains(line, "3. school") {
+		t.Fatalf("expected third-ranked term, got %q", line)
 	}
 }
 
-func TestRenderTopTermRankLine_ShouldUseASCIIWhenFallbackEnabled(t *testing.T) {
-	t.Setenv("DREAMS_ASCII_BARS", "1")
+func TestRenderTopTermRankLine_ShouldRenderEmptyFallback(t *testing.T) {
+	line := renderTopTermRankLine([]string{}, 5)
 
-	line := renderTopTermRankLine([]string{"water", "storm", "school"}, 5)
-
-	if !strings.Contains(line, "water |||||") {
-		t.Fatalf("expected ascii first-ranked term bar, got %q", line)
-	}
-
-	if !strings.Contains(line, "storm ||||") {
-		t.Fatalf("expected ascii second-ranked term bar, got %q", line)
-	}
-
-	if !strings.Contains(line, "school |||") {
-		t.Fatalf("expected ascii third-ranked term bar, got %q", line)
+	if !strings.Contains(line, "(none)") {
+		t.Fatalf("expected empty fallback message, got %q", line)
 	}
 }
 
@@ -691,8 +678,8 @@ func TestModelView_ShouldRenderClusterDistributionBar(t *testing.T) {
 		t.Fatalf("expected cluster share percentage, got %q", view)
 	}
 
-	if !strings.Contains(view, "term ranks:") {
-		t.Fatalf("expected compact top-term mini-chart, got %q", view)
+	if !strings.Contains(view, "1. water") {
+		t.Fatalf("expected top terms section with water term, got %q", view)
 	}
 }
 

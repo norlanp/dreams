@@ -355,7 +355,7 @@ func renderClusterSummary(clusterID, clusterDreamCount, totalDreams int64, barWi
 
 func renderTopTermRankLine(topTerms []string, maxTerms int) string {
 	if len(topTerms) == 0 || maxTerms <= 0 {
-		return "  term ranks: (none)"
+		return "  Top terms: (none)"
 	}
 
 	displayTerms := maxTerms
@@ -365,15 +365,11 @@ func renderTopTermRankLine(topTerms []string, maxTerms int) string {
 
 	parts := make([]string, 0, displayTerms)
 	for i := 0; i < displayTerms; i++ {
-		rankWeight := maxTerms - i
-		if rankWeight < 1 {
-			rankWeight = 1
-		}
-
-		parts = append(parts, fmt.Sprintf("%s %s", topTerms[i], strings.Repeat(rankBarGlyph(), rankWeight)))
+		rank := i + 1
+		parts = append(parts, fmt.Sprintf("%d. %s", rank, topTerms[i]))
 	}
 
-	return "  term ranks: " + strings.Join(parts, " • ")
+	return "  " + strings.Join(parts, "  ")
 }
 
 func clusterSharePercent(clusterDreamCount, totalDreams int64) int64 {
