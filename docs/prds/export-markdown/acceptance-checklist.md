@@ -1,7 +1,7 @@
 # Export to Markdown - Acceptance Checklist
 
 **Feature:** Export dreams to Markdown files  
-**Status:** Draft → Ready for Development  
+**Status:** Completed  
 **Date:** 2026-03-16
 
 ## Functional Requirements
@@ -99,15 +99,17 @@
 
 ## Completion Criteria
 
+Completion is tracked in `todos.json` and summarized in `completion-summary.md`. The checklist below is retained as the original acceptance record.
+
 - [x] PRD created and reviewed
 - [x] Design document finalized
 - [x] Execution plan created
 - [x] Acceptance checklist created
 - [x] Todos generated
-- [ ] All acceptance criteria met
-- [ ] Tests passing
+- [x] All acceptance criteria met
+- [x] Tests passing
 - [ ] Code review approved
-- [ ] Documentation updated
+- [x] Documentation updated
 
 ## Sign-Off
 

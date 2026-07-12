@@ -16,4 +16,4 @@ The Night Priming flow is implemented and validated with strict source fallback,
 - Task tracking in `docs/prds/night-priming/todos.json` is fully completed.
 
 ## Notes
-- Capability status is now marked completed in `docs/capabilities.md`.
+- Feature status is tracked in `docs/features.md`.

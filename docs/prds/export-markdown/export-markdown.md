@@ -4,7 +4,7 @@
 
 A feature to export all dreams from the SQLite database to individual Markdown files for backup and portability.
 
-**Status:** Planning  
+**Status:** Completed  
 **Target:** v1.2.0  
 **Priority:** Medium
 

@@ -49,6 +49,10 @@ internal/
 var/            # Data dir (gitignored)
 ```
 
+## Docs
+
+- Feature capabilities and status: `docs/features.md`
+
 ## Testing
 
 - Test behavior, not implementation

@@ -20,6 +20,7 @@ dreams.db
 .env
 
 # IDE
+.opencode/
 .vscode/
 .idea/
 *.swp

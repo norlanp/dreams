@@ -1,6 +1,6 @@
 # Dream Statistics Acceptance Checklist
 
-Status: in-progress (todo #9)
+Status: completed
 
 This checklist maps dream-statistics requirements and acceptance criteria to automated coverage and targeted manual validation.
 

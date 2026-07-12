@@ -19,4 +19,4 @@ The Dream Statistics feature track is implemented and validated against the appr
 
 ## Notes
 - All todos in `docs/prds/dream-statistics/todos.json` are marked completed.
-- Waiting on final user approval to mark workflow status as `completed` and run cleanup of ephemeral agent folders.
+- Feature status is tracked in `docs/features.md`.
