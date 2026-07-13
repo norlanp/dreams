@@ -121,9 +121,9 @@ Dreams is a CLI dream journal application with a Terminal User Interface (TUI) b
 - Cache management
 
 **Sources:**
-1. AI-generated (primary)
-2. Personalized content
-3. Community content
+1. Personalized content
+2. Community content
+3. AI-generated content
 4. Template fallback
 
 **Design Patterns:**
@@ -185,7 +185,7 @@ Dreams is a CLI dream journal application with a Terminal User Interface (TUI) b
 
 ### Export
 - Absolute path resolution
-- No path traversal sequences allowed
+- Export destinations must remain under the current working directory
 - Atomic writes prevent partial files
 
 ### API Keys
